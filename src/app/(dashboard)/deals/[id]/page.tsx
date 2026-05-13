@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
 import { StagePath } from "@/components/ui/stage-path";
 import { ActivityTimeline } from "@/components/ui/activity-timeline";
-import { TaskStatusBadge, TaskPriorityBadge } from "@/components/ui/status-badges";
+import { TaskPriorityBadge } from "@/components/ui/status-badges";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { PageLoading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/toast";

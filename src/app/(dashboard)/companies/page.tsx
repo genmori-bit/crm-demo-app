@@ -13,7 +13,6 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api-client";
 import { formatDate } from "@/lib/utils";
-import { COMPANY_STATUS_LABELS, type CompanyStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface Company {
@@ -279,7 +278,7 @@ export default function CompaniesPage() {
                             checked={selected.has(c.id)}
                             onChange={() => {
                               const next = new Set(selected);
-                              next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                              if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
                               setSelected(next);
                             }}
                             className="w-3.5 h-3.5 rounded border-sf-border text-primary-500 focus:ring-primary-200"

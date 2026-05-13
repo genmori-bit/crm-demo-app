@@ -389,7 +389,7 @@ export default function DealsPage() {
                               checked={selected.has(d.id)}
                               onChange={() => {
                                 const next = new Set(selected);
-                                next.has(d.id) ? next.delete(d.id) : next.add(d.id);
+                                if (next.has(d.id)) next.delete(d.id); else next.add(d.id);
                                 setSelected(next);
                               }}
                               className="w-3.5 h-3.5 rounded border-sf-border text-primary-500 focus:ring-primary-200"
