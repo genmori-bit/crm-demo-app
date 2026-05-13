@@ -312,3 +312,416 @@ model DealTag {
 
   @@id([dealId, tagId])
 }
+
+// ===================== Marketing Automation =====================
+
+model Prospect {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  firstName       String?
+  lastName        String?
+  company         String?
+  jobTitle        String?
+  phone           String?
+  website         String?
+  industry        String?
+  employeeSize    String?
+  annualRevenue   Float?
+  country         String?
+  state           String?
+  city            String?
+  postalCode      String?
+  source          String?   // web, import, manual, api
+  score           Int       @default(0)
+  grade           String    @default("D")
+  status          String    @default("active") // active, paused, deleted, blacklisted
+  doNotEmail      Boolean   @default(false)
+  optedOut        Boolean   @default(false)
+  optedOutAt      DateTime?
+  emailBounced    Boolean   @default(false)
+  emailBouncedAt  DateTime?
+  spamComplaint   Boolean   @default(false)
+  isConverted     Boolean   @default(false)
+  convertedAt     DateTime?
+  crmContactId    String?
+  assignedUserId  String?
+  lastActivityAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  activities       ProspectActivity[]
+  listMemberships  MarketingListMembership[]
+  emailRecipients  EmailRecipient[]
+  formSubmissions  FormSubmission[]
+  visits           Visit[]
+  programEnrollments ProgramEnrollment[]
+
+  @@index([email])
+  @@index([status])
+  @@index([score])
+  @@index([assignedUserId])
+  @@index([deletedAt])
+  @@index([createdAt])
+}
+
+model ProspectActivity {
+  id          String   @id @default(cuid())
+  prospectId  String
+  type        String   // email_open, email_click, form_submit, page_view, email_send, score_change, status_change
+  description String
+  metadata    Json     @default("{}")
+  score       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@index([prospectId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Visitor {
+  id          String    @id @default(cuid())
+  visitorUid  String    @unique
+  prospectId  String?
+  ipAddress   String?
+  userAgent   String?
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  pageViews   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  visits    Visit[]
+
+  @@index([prospectId])
+  @@index([visitorUid])
+  @@index([lastSeenAt])
+}
+
+model Visit {
+  id         String   @id @default(cuid())
+  visitorId  String
+  prospectId String?
+  startedAt  DateTime @default(now())
+  endedAt    DateTime?
+  duration   Int?     // seconds
+  pageCount  Int      @default(1)
+  referrer   String?
+  campaign   String?
+  medium     String?
+  source     String?
+  createdAt  DateTime @default(now())
+
+  visitor   Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  prospect  Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  pageViews PageView[]
+
+  @@index([visitorId])
+  @@index([prospectId])
+  @@index([startedAt])
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  visitId   String
+  url       String
+  title     String?
+  duration  Int?     // seconds
+  viewedAt  DateTime @default(now())
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+  @@index([url])
+  @@index([viewedAt])
+}
+
+model MarketingList {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  type        String    @default("static") // static, dynamic
+  rules       Json      @default("[]")
+  isPublic    Boolean   @default(false)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  memberships MarketingListMembership[]
+  emailSends  MarketingEmail[]
+
+  @@index([type])
+  @@index([deletedAt])
+}
+
+model MarketingListMembership {
+  listId     String
+  prospectId String
+  addedAt    DateTime @default(now())
+  addedBy    String?  // manual, automation, import
+
+  list     MarketingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  prospect Prospect      @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@id([listId, prospectId])
+  @@index([listId])
+  @@index([prospectId])
+}
+
+model EmailTemplate {
+  id          String    @id @default(cuid())
+  name        String
+  subject     String
+  previewText String?
+  bodyHtml    String
+  bodyText    String?
+  fromName    String?
+  fromEmail   String?
+  replyTo     String?
+  type        String    @default("regular") // regular, drip, test
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  emails MarketingEmail[]
+
+  @@index([type])
+  @@index([deletedAt])
+}
+
+model MarketingEmail {
+  id           String    @id @default(cuid())
+  name         String
+  subject      String
+  templateId   String?
+  listId       String?
+  fromName     String
+  fromEmail    String
+  replyTo      String?
+  bodyHtml     String
+  bodyText     String?
+  status       String    @default("draft") // draft, scheduled, sending, sent, paused
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  totalSent    Int       @default(0)
+  totalOpened  Int       @default(0)
+  totalClicked Int       @default(0)
+  totalBounced Int       @default(0)
+  totalOptOut  Int       @default(0)
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  template   EmailTemplate?  @relation(fields: [templateId], references: [id])
+  list       MarketingList?  @relation(fields: [listId], references: [id])
+  recipients EmailRecipient[]
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([deletedAt])
+}
+
+model EmailRecipient {
+  id         String    @id @default(cuid())
+  emailId    String
+  prospectId String
+  status     String    @default("pending") // pending, sent, opened, clicked, bounced, opted_out
+  sentAt     DateTime?
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  bouncedAt  DateTime?
+  optedOutAt DateTime?
+  metadata   Json      @default("{}")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  email    MarketingEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  prospect Prospect       @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@index([emailId])
+  @@index([prospectId])
+  @@index([status])
+}
+
+model MarketingForm {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  fields      Json      @default("[]")
+  style       Json      @default("{}")
+  thankYouMsg String?
+  redirectUrl String?
+  isActive    Boolean   @default(true)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  submissions FormSubmission[]
+  handlers    FormHandler[]
+
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model FormSubmission {
+  id          String   @id @default(cuid())
+  formId      String
+  prospectId  String?
+  data        Json     @default("{}")
+  ipAddress   String?
+  userAgent   String?
+  pageUrl     String?
+  submittedAt DateTime @default(now())
+
+  form     MarketingForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  prospect Prospect?     @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+
+  @@index([formId])
+  @@index([prospectId])
+  @@index([submittedAt])
+}
+
+model FormHandler {
+  id          String    @id @default(cuid())
+  formId      String
+  name        String
+  successUrl  String?
+  errorUrl    String?
+  isActive    Boolean   @default(true)
+  kbaiEnabled Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  form MarketingForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+}
+
+model LandingPage {
+  id          String    @id @default(cuid())
+  name        String
+  title       String
+  slug        String    @unique
+  description String?
+  bodyHtml    String    @default("")
+  metaTitle   String?
+  metaDesc    String?
+  status      String    @default("draft") // draft, published, archived
+  publishedAt DateTime?
+  views       Int       @default(0)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@index([slug])
+  @@index([deletedAt])
+}
+
+model EngagementProgram {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  status      String    @default("draft") // draft, active, paused, completed
+  startDate   DateTime?
+  endDate     DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  nodes       EngagementProgramNode[]
+  enrollments ProgramEnrollment[]
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model EngagementProgramNode {
+  id          String  @id @default(cuid())
+  programId   String
+  type        String  // email, wait, condition, action
+  label       String
+  config      Json    @default("{}")
+  positionX   Float   @default(0)
+  positionY   Float   @default(0)
+  nextNodeId  String?
+  yesNodeId   String?
+  noNodeId    String?
+
+  program EngagementProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+}
+
+model ProgramEnrollment {
+  id          String    @id @default(cuid())
+  programId   String
+  prospectId  String
+  status      String    @default("active") // active, paused, completed, removed
+  currentNode String?
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  program  EngagementProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  prospect Prospect          @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, prospectId])
+  @@index([programId])
+  @@index([prospectId])
+  @@index([status])
+}
+
+model AutomationRule {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  triggerType String    // prospect_created, form_submit, email_open, email_click, score_change, field_change, date_based
+  triggerConf Json      @default("{}")
+  conditions  Json      @default("[]")
+  actions     Json      @default("[]")
+  isActive    Boolean   @default(false)
+  runCount    Int       @default(0)
+  lastRunAt   DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([triggerType])
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model ScoringRule {
+  id          String    @id @default(cuid())
+  name        String
+  category    String    @default("behavior") // behavior, demographic
+  triggerType String    // email_open, email_click, form_submit, page_view, etc.
+  conditions  Json      @default("[]")
+  scoreChange Int
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model GradingProfile {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  criteria    Json     @default("[]")
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

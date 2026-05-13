@@ -21,6 +21,27 @@ async function main() {
   await prisma.contact.deleteMany();
   await prisma.company.deleteMany();
   await prisma.user.deleteMany();
+  // MA cleanup
+  await prisma.programEnrollment.deleteMany();
+  await prisma.engagementProgramNode.deleteMany();
+  await prisma.engagementProgram.deleteMany();
+  await prisma.automationRule.deleteMany();
+  await prisma.scoringRule.deleteMany();
+  await prisma.gradingProfile.deleteMany();
+  await prisma.emailRecipient.deleteMany();
+  await prisma.marketingEmail.deleteMany();
+  await prisma.emailTemplate.deleteMany();
+  await prisma.formSubmission.deleteMany();
+  await prisma.formHandler.deleteMany();
+  await prisma.marketingForm.deleteMany();
+  await prisma.pageView.deleteMany();
+  await prisma.visit.deleteMany();
+  await prisma.visitor.deleteMany();
+  await prisma.marketingListMembership.deleteMany();
+  await prisma.marketingList.deleteMany();
+  await prisma.prospectActivity.deleteMany();
+  await prisma.prospect.deleteMany();
+  await prisma.landingPage.deleteMany();
 
   // Users
   const hashedPassword = await bcrypt.hash("password123", 12);
@@ -862,6 +883,238 @@ async function main() {
   ]);
 
   void dealReport; void stageReport; void activityReport; void companyReport; void taskReport; void funnelReport;
+
+  // =================== MA Seed Data ===================
+
+  // Prospects
+  const prospectData = [
+    { email: "tanaka.kenji@techcorp.co.jp", firstName: "健二", lastName: "田中", company: "テクノロジー株式会社", jobTitle: "CTO", score: 85, grade: "A", source: "web" },
+    { email: "yamada.haruki@startup.io", firstName: "春樹", lastName: "山田", company: "スタートアップ合同会社", jobTitle: "CEO", score: 120, grade: "A+", source: "web" },
+    { email: "suzuki.yuki@enterprise.jp", firstName: "由紀", lastName: "鈴木", company: "エンタープライズ商事", jobTitle: "購買部長", score: 45, grade: "B", source: "import" },
+    { email: "ito.masato@manufacturing.co.jp", firstName: "雅人", lastName: "伊藤", company: "製造業株式会社", jobTitle: "IT部長", score: 30, grade: "C", source: "manual" },
+    { email: "watanabe.akiko@consulting.jp", firstName: "明子", lastName: "渡辺", company: "コンサルティング会社", jobTitle: "マネージャー", score: 65, grade: "B", source: "web" },
+    { email: "kobayashi.ryo@fintech.co.jp", firstName: "涼", lastName: "小林", company: "フィンテック株式会社", jobTitle: "CFO", score: 95, grade: "A", source: "web" },
+    { email: "nakamura.sota@ecommerce.jp", firstName: "蒼太", lastName: "中村", company: "Eコマース会社", jobTitle: "マーケティング部長", score: 55, grade: "B", source: "import" },
+    { email: "kato.misa@retail.co.jp", firstName: "美沙", lastName: "加藤", company: "リテール株式会社", jobTitle: "店長", score: 20, grade: "D", source: "web" },
+    { email: "yoshida.takumi@saas.io", firstName: "匠", lastName: "吉田", company: "SaaS企業", jobTitle: "VP Sales", score: 150, grade: "A+", source: "web" },
+    { email: "hayashi.nana@healthcare.jp", firstName: "奈々", lastName: "林", company: "ヘルスケア株式会社", jobTitle: "人事部長", score: 10, grade: "D", source: "manual" },
+    { email: "kimura.taro@logistics.co.jp", firstName: "太郎", lastName: "木村", company: "物流株式会社", jobTitle: "部長", score: 40, grade: "C", source: "web" },
+    { email: "shimizu.hanako@education.jp", firstName: "花子", lastName: "清水", company: "教育機関", jobTitle: "理事長", score: 75, grade: "B", source: "import" },
+    { email: "inoue.ken@media.co.jp", firstName: "健", lastName: "井上", company: "メディア会社", jobTitle: "編集長", score: 60, grade: "B", source: "web" },
+    { email: "sasaki.yumi@tourism.jp", firstName: "由美", lastName: "佐々木", company: "観光業", jobTitle: "代表取締役", score: 35, grade: "C", source: "web" },
+    { email: "yamaguchi.daisuke@auto.co.jp", firstName: "大輔", lastName: "山口", company: "自動車メーカー", jobTitle: "調達担当", score: 80, grade: "A", source: "import" },
+  ];
+
+  const prospects = await Promise.all(
+    prospectData.map((p) => prisma.prospect.create({ data: { ...p, status: "active", lastActivityAt: new Date() } }))
+  );
+
+  // Marketing Lists
+  const [listAll, listHot, listNew] = await Promise.all([
+    prisma.marketingList.create({ data: { name: "全プロスペクト", description: "全ての有効なプロスペクト", type: "static", createdById: adminUser.id } }),
+    prisma.marketingList.create({ data: { name: "ホットリード", description: "スコア70以上", type: "static", createdById: adminUser.id } }),
+    prisma.marketingList.create({ data: { name: "新規リード（Web流入）", description: "Web経由の新規リード", type: "static", createdById: adminUser.id } }),
+  ]);
+
+  // Add members to lists
+  await Promise.all([
+    ...prospects.map((p) => prisma.marketingListMembership.create({ data: { listId: listAll.id, prospectId: p.id, addedBy: "import" } })),
+    ...prospects.filter((p) => p.score >= 70).map((p) => prisma.marketingListMembership.create({ data: { listId: listHot.id, prospectId: p.id, addedBy: "automation" } })),
+    ...prospects.filter((p) => p.source === "web").map((p) => prisma.marketingListMembership.create({ data: { listId: listNew.id, prospectId: p.id, addedBy: "automation" } })),
+  ]);
+
+  // Email Template
+  const template = await prisma.emailTemplate.create({
+    data: {
+      name: "製品紹介テンプレート",
+      subject: "【{{company}}様へ】弊社ソリューションのご紹介",
+      previewText: "貴社の課題解決をサポートします",
+      fromName: "営業チーム",
+      fromEmail: "sales@example.com",
+      bodyHtml: `<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+<h2 style="color:#0176d3;">{{first_name}}様</h2>
+<p>平素よりお世話になっております。</p>
+<p>この度は弊社サービスにご興味をお持ちいただきありがとうございます。</p>
+<p>{{company}}様の課題解決に向けて、弊社ソリューションをご提案させていただきたいと存じます。</p>
+<p style="margin-top:20px;"><a href="#" style="background:#0176d3;color:white;padding:12px 24px;border-radius:4px;text-decoration:none;">詳細を見る</a></p>
+<p style="margin-top:30px;font-size:12px;color:#999;">配信停止をご希望の方は<a href="{{unsubscribe_url}}">こちら</a></p>
+</body></html>`,
+      type: "regular",
+      createdById: adminUser.id,
+    },
+  });
+
+  // Marketing Emails
+  const email1 = await prisma.marketingEmail.create({
+    data: {
+      name: "2024年 春のキャンペーン",
+      subject: "春の特別オファーをお届けします",
+      fromName: "マーケティングチーム",
+      fromEmail: "marketing@example.com",
+      templateId: template.id,
+      listId: listAll.id,
+      bodyHtml: template.bodyHtml,
+      status: "sent",
+      sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      totalSent: 15,
+      totalOpened: 8,
+      totalClicked: 3,
+      createdById: adminUser.id,
+    },
+  });
+
+  const email2 = await prisma.marketingEmail.create({
+    data: {
+      name: "ホットリード向けフォローアップ",
+      subject: "【重要】ご提案資料をお送りします",
+      fromName: "営業チーム",
+      fromEmail: "sales@example.com",
+      listId: listHot.id,
+      bodyHtml: "<p>先日はお問い合わせありがとうございました。</p>",
+      status: "draft",
+      createdById: adminUser.id,
+    },
+  });
+
+  void email1; void email2;
+
+  // Prospect Activities
+  await Promise.all(
+    prospects.slice(0, 5).map((p) =>
+      prisma.prospectActivity.create({
+        data: { prospectId: p.id, type: "email_send", description: "春のキャンペーンメール送信", score: 0, metadata: { emailId: email1.id } },
+      })
+    )
+  );
+  await Promise.all(
+    prospects.slice(0, 3).map((p) =>
+      prisma.prospectActivity.create({
+        data: { prospectId: p.id, type: "email_open", description: "春のキャンペーンメール開封", score: 5 },
+      })
+    )
+  );
+
+  // Marketing Form
+  const form = await prisma.marketingForm.create({
+    data: {
+      name: "資料請求フォーム",
+      description: "製品資料の請求に利用するフォームです",
+      fields: [
+        { id: "f1", type: "email", label: "メールアドレス", name: "email", required: true },
+        { id: "f2", type: "text", label: "名前", name: "name", required: true },
+        { id: "f3", type: "text", label: "会社名", name: "company", required: false },
+        { id: "f4", type: "text", label: "電話番号", name: "phone", required: false },
+      ] as object[],
+      thankYouMsg: "資料請求を受け付けました。2営業日以内にご連絡いたします。",
+      isActive: true,
+      createdById: adminUser.id,
+    },
+  });
+
+  // Landing Page
+  await prisma.landingPage.create({
+    data: {
+      name: "製品紹介LP",
+      title: "業務効率を劇的に改善するCRMソリューション",
+      slug: "product-overview",
+      description: "製品の主要機能と導入メリットを紹介するページ",
+      bodyHtml: `<div style="max-width:800px;margin:0 auto;padding:40px 20px;font-family:sans-serif;">
+<h1 style="color:#0176d3;font-size:2.5em;">業務効率を劇的に改善するCRM</h1>
+<p style="font-size:1.2em;color:#444;margin:20px 0;">営業チームの生産性を最大化し、顧客満足度を向上させます。</p>
+<div style="background:#f0f4ff;padding:30px;border-radius:8px;margin:30px 0;">
+<h2>主な機能</h2>
+<ul>
+<li>顧客・商談管理</li>
+<li>マーケティングオートメーション</li>
+<li>レポート・ダッシュボード</li>
+</ul>
+</div>
+</div>`,
+      status: "published",
+      publishedAt: new Date(),
+      views: 342,
+      createdById: adminUser.id,
+    },
+  });
+
+  // Scoring Rules
+  await Promise.all([
+    prisma.scoringRule.create({ data: { name: "メール開封", category: "behavior", triggerType: "email_open", scoreChange: 5, isActive: true } }),
+    prisma.scoringRule.create({ data: { name: "メールクリック", category: "behavior", triggerType: "email_click", scoreChange: 10, isActive: true } }),
+    prisma.scoringRule.create({ data: { name: "フォーム送信", category: "behavior", triggerType: "form_submit", scoreChange: 25, isActive: true } }),
+    prisma.scoringRule.create({ data: { name: "価格ページ閲覧", category: "behavior", triggerType: "page_view_pricing", scoreChange: 15, isActive: true } }),
+    prisma.scoringRule.create({ data: { name: "製品ページ閲覧", category: "behavior", triggerType: "page_view_product", scoreChange: 5, isActive: true } }),
+    prisma.scoringRule.create({ data: { name: "メールバウンス", category: "behavior", triggerType: "email_bounce", scoreChange: -10, isActive: true } }),
+  ]);
+
+  // Automation Rules
+  await Promise.all([
+    prisma.automationRule.create({
+      data: {
+        name: "フォーム送信時 ホットリストに追加",
+        description: "資料請求フォームが送信された場合、ホットリードリストに追加",
+        triggerType: "form_submit",
+        triggerConf: { formId: form.id } as object,
+        conditions: [] as object[],
+        actions: [{ type: "add_to_list", config: { listId: listHot.id } }] as object[],
+        isActive: true,
+        createdById: adminUser.id,
+      },
+    }),
+    prisma.automationRule.create({
+      data: {
+        name: "スコア100以上で担当者通知",
+        description: "プロスペクトのスコアが100を超えたら担当者に通知",
+        triggerType: "score_change",
+        triggerConf: { threshold: 100 } as object,
+        conditions: [{ field: "score", operator: "gte", value: 100 }] as object[],
+        actions: [{ type: "notify_user", config: { message: "ホットリードが発生しました" } }] as object[],
+        isActive: true,
+        createdById: adminUser.id,
+      },
+    }),
+    prisma.automationRule.create({
+      data: {
+        name: "新規プロスペクト全体リスト追加",
+        description: "プロスペクト作成時に全体リストへ自動追加",
+        triggerType: "prospect_created",
+        triggerConf: {} as object,
+        conditions: [] as object[],
+        actions: [{ type: "add_to_list", config: { listId: listAll.id } }] as object[],
+        isActive: true,
+        createdById: adminUser.id,
+      },
+    }),
+  ]);
+
+  // Grading Profile
+  await prisma.gradingProfile.create({
+    data: {
+      name: "標準グレーディング",
+      description: "業種・役職・会社規模に基づくグレード判定",
+      criteria: [
+        { field: "jobTitle", contains: "CEO", gradeBoost: 2 },
+        { field: "jobTitle", contains: "部長", gradeBoost: 1 },
+        { field: "industry", value: "IT", gradeBoost: 1 },
+      ] as object[],
+      isDefault: true,
+    },
+  });
+
+  // Engagement Program
+  const program = await prisma.engagementProgram.create({
+    data: {
+      name: "新規リードナーチャリング",
+      description: "新規リード向けの3ステップナーチャリングプログラム",
+      status: "active",
+      createdById: adminUser.id,
+    },
+  });
+  await Promise.all([
+    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "email", label: "ウェルカムメール送信", config: { delay: 0 } as object, positionX: 100, positionY: 50 } }),
+    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "wait", label: "3日待機", config: { days: 3 } as object, positionX: 100, positionY: 150 } }),
+    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "email", label: "製品紹介メール送信", config: { delay: 3 } as object, positionX: 100, positionY: 250 } }),
+  ]);
 
   console.log("✅ シードデータの投入が完了しました");
 }
