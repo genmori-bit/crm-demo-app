@@ -105,6 +105,7 @@ export default function ReportDetailPage() {
             <Button variant="secondary" size="sm" onClick={runReport} disabled={running}>
               {running ? "実行中..." : "再実行"}
             </Button>
+            <Button variant="secondary" size="sm" onClick={() => router.push(`/reports/${id}/add-to-dashboard`)}>ダッシュボードに追加</Button>
             <Button variant="secondary" size="sm" onClick={() => router.push(`/reports/${id}/edit`)}>編集</Button>
           </div>
         </div>

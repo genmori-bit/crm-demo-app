@@ -626,6 +626,243 @@ async function main() {
     }),
   ]);
 
+  // Reports
+  const [dealReport, stageReport, activityReport, companyReport, taskReport, funnelReport] = await Promise.all([
+    prisma.report.create({
+      data: {
+        name: "商談一覧",
+        description: "全商談の一覧レポート",
+        objectType: "deal",
+        columns: ["dealName", "stage", "amount", "probability", "expectedCloseDate", "company.companyName"],
+        filters: [],
+        sortField: "expectedCloseDate",
+        sortDir: "asc",
+        isPublic: true,
+        createdById: adminUser.id,
+      },
+    }),
+    prisma.report.create({
+      data: {
+        name: "ステージ別商談集計",
+        description: "商談のステージ別集計",
+        objectType: "deal",
+        columns: ["stage", "amount"],
+        filters: [],
+        sortField: "amount",
+        sortDir: "desc",
+        groupBy: "stage",
+        isPublic: true,
+        createdById: adminUser.id,
+      },
+    }),
+    prisma.report.create({
+      data: {
+        name: "活動履歴一覧",
+        description: "直近の活動履歴",
+        objectType: "activity",
+        columns: ["type", "subject", "activityDate", "company.companyName"],
+        filters: [],
+        sortField: "activityDate",
+        sortDir: "desc",
+        isPublic: true,
+        createdById: adminUser.id,
+      },
+    }),
+    prisma.report.create({
+      data: {
+        name: "企業一覧",
+        description: "顧客企業の一覧",
+        objectType: "company",
+        columns: ["companyName", "industry", "status"],
+        filters: [],
+        sortField: "companyName",
+        sortDir: "asc",
+        isPublic: true,
+        createdById: adminUser.id,
+      },
+    }),
+    prisma.report.create({
+      data: {
+        name: "タスク一覧",
+        description: "未完了タスクの一覧",
+        objectType: "activity",
+        columns: ["subject", "type", "activityDate"],
+        filters: [],
+        sortField: "activityDate",
+        sortDir: "asc",
+        isPublic: true,
+        createdById: adminUser.id,
+      },
+    }),
+    prisma.report.create({
+      data: {
+        name: "ファネル分析",
+        description: "商談のステージ別ファネル",
+        objectType: "deal",
+        columns: ["stage", "amount"],
+        filters: [],
+        sortField: null,
+        sortDir: "desc",
+        groupBy: "stage",
+        isPublic: true,
+        createdById: adminUser.id,
+      },
+    }),
+  ]);
+
+  // Dashboards
+  const salesDashboard = await prisma.dashboard.create({
+    data: {
+      name: "営業ダッシュボード",
+      description: "営業チームの主要KPIと商談状況",
+      visibility: "PUBLIC",
+      defaultDateRange: "thisMonth",
+      ownerId: adminUser.id,
+    },
+  });
+  const managerDashboard = await prisma.dashboard.create({
+    data: {
+      name: "マネージャーダッシュボード",
+      description: "チーム全体のパフォーマンス管理",
+      visibility: "TEAM",
+      defaultDateRange: "thisQuarter",
+      ownerId: adminUser.id,
+    },
+  });
+  const activityDashboard = await prisma.dashboard.create({
+    data: {
+      name: "活動管理ダッシュボード",
+      description: "活動履歴とタスクの進捗管理",
+      visibility: "PUBLIC",
+      defaultDateRange: "last30",
+      ownerId: adminUser.id,
+    },
+  });
+
+  // 営業ダッシュボード widgets
+  await Promise.all([
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: salesDashboard.id,
+        reportId: dealReport.id,
+        title: "商談件数（今月）",
+        widgetType: "KPI",
+        config: { metric: "count", format: "number" },
+        size: "SMALL",
+        sortOrder: 0,
+      },
+    }),
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: salesDashboard.id,
+        reportId: dealReport.id,
+        title: "商談金額合計（今月）",
+        widgetType: "KPI",
+        config: { metric: "sumAmount", format: "currency" },
+        size: "SMALL",
+        sortOrder: 1,
+      },
+    }),
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: salesDashboard.id,
+        reportId: stageReport.id,
+        title: "ステージ別商談金額",
+        widgetType: "BAR",
+        config: { orientation: "horizontal", yAxis: "amount" },
+        size: "MEDIUM",
+        sortOrder: 2,
+      },
+    }),
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: salesDashboard.id,
+        reportId: dealReport.id,
+        title: "商談一覧",
+        widgetType: "TABLE",
+        config: { limit: "10" },
+        size: "WIDE",
+        sortOrder: 3,
+      },
+    }),
+  ]);
+
+  // マネージャーダッシュボード widgets
+  await Promise.all([
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: managerDashboard.id,
+        reportId: stageReport.id,
+        title: "ステージ別商談（ファネル）",
+        widgetType: "FUNNEL",
+        config: { metric: "amount" },
+        size: "MEDIUM",
+        sortOrder: 0,
+      },
+    }),
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: managerDashboard.id,
+        reportId: stageReport.id,
+        title: "ステージ別件数",
+        widgetType: "PIE",
+        config: {},
+        size: "MEDIUM",
+        sortOrder: 1,
+      },
+    }),
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: managerDashboard.id,
+        reportId: dealReport.id,
+        title: "商談一覧（今四半期）",
+        widgetType: "TABLE",
+        config: { limit: "20" },
+        size: "WIDE",
+        sortOrder: 2,
+      },
+    }),
+  ]);
+
+  // 活動管理ダッシュボード widgets
+  await Promise.all([
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: activityDashboard.id,
+        reportId: activityReport.id,
+        title: "活動件数",
+        widgetType: "KPI",
+        config: { metric: "count", format: "number" },
+        size: "SMALL",
+        sortOrder: 0,
+      },
+    }),
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: activityDashboard.id,
+        reportId: activityReport.id,
+        title: "活動履歴",
+        widgetType: "TABLE",
+        config: { limit: "15" },
+        size: "WIDE",
+        sortOrder: 1,
+      },
+    }),
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: activityDashboard.id,
+        reportId: companyReport.id,
+        title: "企業一覧",
+        widgetType: "TABLE",
+        config: { limit: "10" },
+        size: "MEDIUM",
+        sortOrder: 2,
+      },
+    }),
+  ]);
+
+  void dealReport; void stageReport; void activityReport; void companyReport; void taskReport; void funnelReport;
+
   console.log("✅ シードデータの投入が完了しました");
 }
 

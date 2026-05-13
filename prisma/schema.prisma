@@ -17,25 +17,26 @@ model User {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  auditLogs AuditLog[]
-  reports   Report[]
+  auditLogs  AuditLog[]
+  reports    Report[]
+  dashboards Dashboard[]
 }
 
 model Company {
-  id           String    @id @default(cuid())
-  companyName  String
-  website      String?
-  industry     String?
-  employeeSize String?
-  status       String    @default("prospect")
-  ownerName    String?
-  phone        String?
-  address      String?
-  memo         String?
+  id            String    @id @default(cuid())
+  companyName   String
+  website       String?
+  industry      String?
+  employeeSize  String?
+  status        String    @default("prospect")
+  ownerName     String?
+  phone         String?
+  address       String?
+  memo          String?
   annualRevenue Float?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   contacts   Contact[]
   deals      Deal[]
@@ -49,18 +50,18 @@ model Company {
 }
 
 model Contact {
-  id         String    @id @default(cuid())
-  companyId  String
-  fullName   String
-  email      String?
-  phone      String?
+  id        String    @id @default(cuid())
+  companyId String
+  fullName  String
+  email     String?
+  phone     String?
   department String?
-  title      String?
-  isPrimary  Boolean   @default(false)
-  memo       String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  title     String?
+  isPrimary Boolean   @default(false)
+  memo      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   deals      Deal[]
@@ -158,7 +159,8 @@ model Report {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  createdBy User @relation(fields: [createdById], references: [id])
+  createdBy User              @relation(fields: [createdById], references: [id])
+  widgets   DashboardWidget[]
 
   @@index([objectType])
   @@index([createdById])
@@ -166,37 +168,44 @@ model Report {
 }
 
 model Dashboard {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  isDefault   Boolean   @default(false)
-  isPublic    Boolean   @default(false)
-  createdById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id               String    @id @default(cuid())
+  name             String
+  description      String?
+  visibility       String    @default("PRIVATE")
+  defaultDateRange String?
+  filters          Json?
+  layout           Json?
+  ownerId          String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
 
   widgets DashboardWidget[]
+  owner   User?             @relation(fields: [ownerId], references: [id])
 
+  @@index([visibility])
+  @@index([ownerId])
   @@index([deletedAt])
 }
 
 model DashboardWidget {
   id          String   @id @default(cuid())
   dashboardId String
-  reportId    String?
-  widgetType  String
+  reportId    String
   title       String
+  widgetType  String
   config      Json     @default("{}")
-  position    Int      @default(0)
-  width       Int      @default(6)
-  height      Int      @default(4)
+  position    Json     @default("{}")
+  size        String   @default("MEDIUM")
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   dashboard Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  report    Report    @relation(fields: [reportId], references: [id])
 
   @@index([dashboardId])
+  @@index([reportId])
 }
 
 model SavedView {
@@ -217,18 +226,18 @@ model SavedView {
 }
 
 model ImportJob {
-  id          String    @id @default(cuid())
-  objectType  String
-  fileName    String
-  status      String    @default("pending")
-  totalRows   Int       @default(0)
-  importedRows Int      @default(0)
-  errorRows   Int       @default(0)
-  errors      Json      @default("[]")
-  createdById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  completedAt DateTime?
+  id           String    @id @default(cuid())
+  objectType   String
+  fileName     String
+  status       String    @default("pending")
+  totalRows    Int       @default(0)
+  importedRows Int       @default(0)
+  errorRows    Int       @default(0)
+  errors       Json      @default("[]")
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
 
   @@index([objectType])
   @@index([status])
