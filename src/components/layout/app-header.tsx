@@ -66,7 +66,12 @@ export function AppHeader() {
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="顧客、担当者、商談を検索..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchQuery.trim()) {
+                router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+              }
+            }}
+            placeholder="顧客、担当者、商談を検索... (Enter)"
             className="w-full h-9 bg-primary-700/50 border border-primary-600/50 rounded-sf pl-9 pr-4 text-sm text-white placeholder:text-white/50 focus:outline-none focus:bg-white focus:text-sf-text focus:placeholder:text-sf-placeholder focus:border-transparent focus:ring-2 focus:ring-white/40 transition-all"
             aria-label="グローバル検索"
           />

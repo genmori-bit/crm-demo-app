@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
 
   const companies = await prisma.company.findMany({
     where: {
+      deletedAt: null,
       AND: [
         query
           ? {

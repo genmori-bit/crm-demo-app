@@ -8,12 +8,17 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String
+  role         String    @default("SALES")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  auditLogs AuditLog[]
+  reports   Report[]
 }
 
 model Company {
@@ -24,52 +29,74 @@ model Company {
   employeeSize String?
   status       String    @default("prospect")
   ownerName    String?
+  phone        String?
+  address      String?
   memo         String?
+  annualRevenue Float?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   contacts   Contact[]
   deals      Deal[]
   activities Activity[]
   tasks      Task[]
+  tags       CompanyTag[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@index([companyName])
 }
 
 model Contact {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   companyId  String
   fullName   String
   email      String?
   phone      String?
   department String?
   title      String?
-  isPrimary  Boolean  @default(false)
+  isPrimary  Boolean   @default(false)
   memo       String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
 
   company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   deals      Deal[]
   activities Activity[]
+
+  @@index([companyId])
+  @@index([email])
+  @@index([deletedAt])
 }
 
 model Deal {
-  id               String    @id @default(cuid())
-  companyId        String
-  contactId        String?
-  dealName         String
-  stage            String    @default("lead")
-  amount           Float     @default(0)
-  probability      Int       @default(0)
+  id                String    @id @default(cuid())
+  companyId         String
+  contactId         String?
+  dealName          String
+  stage             String    @default("lead")
+  amount            Float     @default(0)
+  probability       Int       @default(0)
   expectedCloseDate DateTime?
-  nextAction       String?
-  memo             String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  nextAction        String?
+  memo              String?
+  lostReason        String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 
   company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   contact    Contact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
   activities Activity[]
   tasks      Task[]
+  tags       DealTag[]
+
+  @@index([companyId])
+  @@index([stage])
+  @@index([expectedCloseDate])
+  @@index([deletedAt])
 }
 
 model Activity {
@@ -77,6 +104,7 @@ model Activity {
   companyId    String?
   contactId    String?
   dealId       String?
+  createdById  String?
   type         String   @default("note")
   subject      String
   body         String?
@@ -84,15 +112,20 @@ model Activity {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  company  Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([dealId])
+  @@index([activityDate])
 }
 
 model Task {
   id          String    @id @default(cuid())
   companyId   String?
   dealId      String?
+  assigneeId  String?
   title       String
   description String?
   dueDate     DateTime?
@@ -103,4 +136,170 @@ model Task {
 
   company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([dealId])
+}
+
+model Report {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  objectType  String
+  columns     Json
+  filters     Json      @default("[]")
+  sortField   String?
+  sortDir     String    @default("desc")
+  groupBy     String?
+  isPublic    Boolean   @default(false)
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@index([objectType])
+  @@index([createdById])
+  @@index([deletedAt])
+}
+
+model Dashboard {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  isDefault   Boolean   @default(false)
+  isPublic    Boolean   @default(false)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  widgets DashboardWidget[]
+
+  @@index([deletedAt])
+}
+
+model DashboardWidget {
+  id          String   @id @default(cuid())
+  dashboardId String
+  reportId    String?
+  widgetType  String
+  title       String
+  config      Json     @default("{}")
+  position    Int      @default(0)
+  width       Int      @default(6)
+  height      Int      @default(4)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dashboard Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  @@index([dashboardId])
+}
+
+model SavedView {
+  id         String   @id @default(cuid())
+  objectType String
+  name       String
+  filters    Json     @default("{}")
+  columns    Json     @default("[]")
+  sortField  String?
+  sortDir    String   @default("asc")
+  isDefault  Boolean  @default(false)
+  userId     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([objectType])
+  @@index([userId])
+}
+
+model ImportJob {
+  id          String    @id @default(cuid())
+  objectType  String
+  fileName    String
+  status      String    @default("pending")
+  totalRows   Int       @default(0)
+  importedRows Int      @default(0)
+  errorRows   Int       @default(0)
+  errors      Json      @default("[]")
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([objectType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ExportJob {
+  id          String    @id @default(cuid())
+  objectType  String
+  filters     Json      @default("{}")
+  status      String    @default("pending")
+  fileName    String?
+  rowCount    Int       @default(0)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([objectType])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  objectType String
+  objectId   String
+  action     String
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([objectType, objectId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+model DataTag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String   @default("#0176d3")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companies CompanyTag[]
+  deals     DealTag[]
+}
+
+model CompanyTag {
+  companyId String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tag     DataTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, tagId])
+}
+
+model DealTag {
+  dealId    String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  deal Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  tag  DataTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, tagId])
 }

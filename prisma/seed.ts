@@ -5,6 +5,16 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Clear existing data
+  await prisma.auditLog.deleteMany();
+  await prisma.importJob.deleteMany();
+  await prisma.exportJob.deleteMany();
+  await prisma.dashboardWidget.deleteMany();
+  await prisma.dashboard.deleteMany();
+  await prisma.report.deleteMany();
+  await prisma.savedView.deleteMany();
+  await prisma.dealTag.deleteMany();
+  await prisma.companyTag.deleteMany();
+  await prisma.dataTag.deleteMany();
   await prisma.task.deleteMany();
   await prisma.activity.deleteMany();
   await prisma.deal.deleteMany();
@@ -12,15 +22,40 @@ async function main() {
   await prisma.company.deleteMany();
   await prisma.user.deleteMany();
 
-  // Admin user
+  // Users
   const hashedPassword = await bcrypt.hash("password123", 12);
-  await prisma.user.create({
-    data: {
-      email: "admin@example.com",
-      name: "管理者",
-      password: hashedPassword,
-    },
-  });
+  const [adminUser] = await Promise.all([
+    prisma.user.create({
+      data: { email: "admin@example.com", name: "管理者", passwordHash: hashedPassword, role: "ADMIN" },
+    }),
+    prisma.user.create({
+      data: { email: "manager@example.com", name: "田中マネージャー", passwordHash: hashedPassword, role: "MANAGER" },
+    }),
+    prisma.user.create({
+      data: { email: "sales1@example.com", name: "山田 営業一郎", passwordHash: hashedPassword, role: "SALES" },
+    }),
+    prisma.user.create({
+      data: { email: "sales2@example.com", name: "佐藤 営業花子", passwordHash: hashedPassword, role: "SALES" },
+    }),
+    prisma.user.create({
+      data: { email: "sales3@example.com", name: "鈴木 営業次郎", passwordHash: hashedPassword, role: "SALES" },
+    }),
+  ]);
+
+  // Tags
+  const tags = await Promise.all([
+    prisma.dataTag.create({ data: { name: "重点顧客", color: "#0176d3" } }),
+    prisma.dataTag.create({ data: { name: "要フォロー", color: "#dd7a01" } }),
+    prisma.dataTag.create({ data: { name: "競合あり", color: "#ea001e" } }),
+    prisma.dataTag.create({ data: { name: "リピーター", color: "#2e844a" } }),
+    prisma.dataTag.create({ data: { name: "大手", color: "#6b34b0" } }),
+    prisma.dataTag.create({ data: { name: "スタートアップ", color: "#0e7490" } }),
+    prisma.dataTag.create({ data: { name: "パートナー", color: "#0f766e" } }),
+    prisma.dataTag.create({ data: { name: "海外展開", color: "#1d4ed8" } }),
+    prisma.dataTag.create({ data: { name: "上場企業", color: "#7c3aed" } }),
+    prisma.dataTag.create({ data: { name: "成長企業", color: "#15803d" } }),
+  ]);
+  void adminUser; void tags;
 
   // Companies
   const companies = await Promise.all([
