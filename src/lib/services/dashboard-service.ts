@@ -41,7 +41,7 @@ export async function getDashboard(id: string) {
 }
 
 export async function createDashboard(
-  data: { name: string; description?: string; visibility: string; defaultDateRange?: string; ownerId: string },
+  data: { name: string; description?: string | null; visibility: string; defaultDateRange?: string | null; ownerId?: string },
   userId: string,
 ) {
   const dashboard = await prisma.dashboard.create({ data });

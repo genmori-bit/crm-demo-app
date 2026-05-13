@@ -5,9 +5,9 @@ import { z } from "zod";
 
 const createSchema = z.object({
   name: z.string().min(1).max(100),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   visibility: z.enum(["PRIVATE", "TEAM", "PUBLIC"]).default("PRIVATE"),
-  defaultDateRange: z.string().optional(),
+  defaultDateRange: z.string().nullable().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const dashboard = await createDashboard({ ...parsed.data, ownerId: session.user.id ?? "" }, session.user.id ?? "");
+  const userId = session.user.id ?? "";
+  const dashboard = await createDashboard({ ...parsed.data, ownerId: userId || undefined }, userId);
   return NextResponse.json(dashboard, { status: 201 });
 }
