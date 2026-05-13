@@ -3,12 +3,23 @@
 import { signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { AppLauncher } from "@/components/layout/app-launcher";
+import { useCurrentApp } from "@/hooks/useCurrentApp";
+import { getAppById } from "@/lib/apps";
 
 export function AppHeader() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { currentAppId, setCurrentApp } = useCurrentApp();
+  const currentApp = getAppById(currentAppId);
+
+  const userName = session?.user?.name ?? "ユーザー";
+  const userEmail = session?.user?.email ?? "";
+  const userInitial = userName.charAt(0);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -24,25 +35,16 @@ export function AppHeader() {
     <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-sf-nav flex items-center px-4 gap-3">
       {/* App launcher + brand */}
       <div className="flex items-center gap-3 shrink-0">
-        <button
-          className="w-9 h-9 rounded flex items-center justify-center text-white/70 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
-          aria-label="アプリランチャー"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="3" width="4" height="4" rx="1" />
-            <rect x="10" y="3" width="4" height="4" rx="1" />
-            <rect x="17" y="3" width="4" height="4" rx="1" />
-            <rect x="3" y="10" width="4" height="4" rx="1" />
-            <rect x="10" y="10" width="4" height="4" rx="1" />
-            <rect x="17" y="10" width="4" height="4" rx="1" />
-            <rect x="3" y="17" width="4" height="4" rx="1" />
-            <rect x="10" y="17" width="4" height="4" rx="1" />
-            <rect x="17" y="17" width="4" height="4" rx="1" />
-          </svg>
-        </button>
-        <span className="text-white font-bold text-sm tracking-wide whitespace-nowrap">
-          Simple CRM
-        </span>
+        <AppLauncher currentAppId={currentAppId} onSelect={setCurrentApp} />
+        <div className="flex items-center gap-2">
+          <span className="text-white font-bold text-sm tracking-wide whitespace-nowrap">
+            Simple CRM
+          </span>
+          <span className="text-white/40 text-xs">|</span>
+          <span className="text-white/80 text-xs font-medium whitespace-nowrap">
+            {currentApp.label}
+          </span>
+        </div>
       </div>
 
       {/* Global search */}
@@ -55,12 +57,7 @@ export function AppHeader() {
             viewBox="0 0 24 24"
             aria-hidden="true"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             type="search"
@@ -90,14 +87,6 @@ export function AppHeader() {
         </button>
         <button
           className="w-9 h-9 rounded flex items-center justify-center text-white/70 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
-          aria-label="ヘルプ"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-        <button
-          className="w-9 h-9 rounded flex items-center justify-center text-white/70 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
           onClick={() => router.push("/settings")}
           aria-label="設定"
         >
@@ -116,7 +105,7 @@ export function AppHeader() {
             aria-expanded={userMenuOpen}
             aria-haspopup="true"
           >
-            管
+            {userInitial}
           </button>
           {userMenuOpen && (
             <div
@@ -124,8 +113,8 @@ export function AppHeader() {
               role="menu"
             >
               <div className="px-4 py-2 border-b border-sf-border">
-                <p className="text-xs font-medium text-sf-text">管理者</p>
-                <p className="text-xs text-sf-weak">admin@example.com</p>
+                <p className="text-xs font-medium text-sf-text">{userName}</p>
+                <p className="text-xs text-sf-weak">{userEmail}</p>
               </div>
               <button
                 onClick={() => signOut({ callbackUrl: "/login" })}

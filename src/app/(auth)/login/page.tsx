@@ -35,7 +35,7 @@ export default function LoginPage() {
     if (result?.error) {
       setError("メールアドレスまたはパスワードが正しくありません");
     } else {
-      router.push("/dashboard");
+      router.push("/home");
       router.refresh();
     }
   };
