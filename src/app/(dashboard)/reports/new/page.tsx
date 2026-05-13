@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api-client";
-import { ALLOWED_COLUMNS } from "@/lib/services/report-query-builder";
+import { ALLOWED_COLUMNS } from "@/lib/report-columns";
 
 const OBJECT_TYPES = [
   { value: "deal", label: "商談" },

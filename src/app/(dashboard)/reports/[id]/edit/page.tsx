@@ -8,7 +8,7 @@ import { LightningCard, LightningCardHeader, LightningCardBody } from "@/compone
 import { PageLoading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api-client";
-import { ALLOWED_COLUMNS } from "@/lib/services/report-query-builder";
+import { ALLOWED_COLUMNS } from "@/lib/report-columns";
 
 const OPERATORS = [
   { value: "eq", label: "次と等しい" },

@@ -1,43 +1,5 @@
 import { prisma } from "@/lib/prisma";
-
-const ALLOWED_COLUMNS: Record<string, Record<string, string>> = {
-  deal: {
-    dealName: "商談名",
-    stage: "ステージ",
-    amount: "金額",
-    probability: "確度",
-    expectedCloseDate: "クローズ予定日",
-    nextAction: "次回アクション",
-    createdAt: "登録日",
-    "company.companyName": "顧客企業",
-    "contact.fullName": "担当者",
-  },
-  company: {
-    companyName: "会社名",
-    industry: "業種",
-    status: "ステータス",
-    employeeSize: "規模",
-    annualRevenue: "年商",
-    createdAt: "登録日",
-  },
-  contact: {
-    fullName: "氏名",
-    email: "メールアドレス",
-    phone: "電話番号",
-    department: "部署",
-    title: "役職",
-    "company.companyName": "所属企業",
-    createdAt: "登録日",
-  },
-  activity: {
-    type: "種別",
-    subject: "件名",
-    activityDate: "活動日",
-    "company.companyName": "企業",
-    "deal.dealName": "商談",
-    createdAt: "登録日",
-  },
-};
+import { ALLOWED_COLUMNS } from "@/lib/report-columns";
 
 const ALLOWED_SORT_FIELDS: Record<string, string[]> = {
   deal: ["dealName", "amount", "probability", "expectedCloseDate", "createdAt", "stage"],
