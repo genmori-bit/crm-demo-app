@@ -43,23 +43,133 @@ async function main() {
   await prisma.prospect.deleteMany();
   await prisma.landingPage.deleteMany();
 
+  // Settings seed
+  await prisma.permissionSetAssignment.deleteMany();
+  await prisma.teamMember.deleteMany();
+  await prisma.userAppAccess.deleteMany();
+  await prisma.loginHistory.deleteMany();
+  await prisma.userInvitation.deleteMany();
+  await prisma.passwordResetToken.deleteMany();
+  await prisma.team.deleteMany();
+  await prisma.permissionSet.deleteMany();
+  await prisma.profile.deleteMany();
+  await prisma.role.deleteMany();
+  await prisma.securitySettings.deleteMany();
+  await prisma.orgSettings.deleteMany();
+
+  // Profiles
+  const [adminProfile, managerProfile, salesProfile] = await Promise.all([
+    prisma.profile.create({
+      data: {
+        name: "システム管理者",
+        description: "すべての権限を持つシステム管理者プロファイル",
+        isSystem: true,
+        permissions: Object.fromEntries([
+          "company.view","company.create","company.edit","company.delete","company.export",
+          "contact.view","contact.create","contact.edit","contact.delete",
+          "deal.view","deal.create","deal.edit","deal.delete","deal.export",
+          "activity.view","activity.create","activity.edit","activity.delete",
+          "task.view","task.create","task.edit","task.delete",
+          "report.view","report.create","report.edit","report.delete",
+          "dashboard.view","dashboard.create","dashboard.edit","dashboard.delete",
+          "ma.view","ma.prospect.view","ma.prospect.edit","ma.email.view","ma.email.send",
+          "ma.form.view","ma.form.edit","ma.program.view","ma.program.edit",
+          "setup.view","setup.user.view","setup.user.create","setup.user.edit","setup.user.disable",
+          "setup.role.manage","setup.profile.manage","setup.permissionset.manage",
+          "setup.team.manage","setup.appaccess.manage","setup.security.manage","setup.audit.view","setup.org.manage",
+          "data.import","data.export","data.tags.manage",
+        ].map((k) => [k, true])),
+      },
+    }),
+    prisma.profile.create({
+      data: {
+        name: "マネージャー",
+        description: "チームマネージャー向けプロファイル",
+        permissions: Object.fromEntries([
+          "company.view","company.create","company.edit","company.export",
+          "contact.view","contact.create","contact.edit",
+          "deal.view","deal.create","deal.edit","deal.export",
+          "activity.view","activity.create","activity.edit",
+          "task.view","task.create","task.edit",
+          "report.view","report.create","report.edit",
+          "dashboard.view","dashboard.create","dashboard.edit",
+          "ma.view","ma.prospect.view","ma.prospect.edit","ma.email.view",
+          "ma.form.view","ma.program.view",
+          "setup.view","setup.user.view","setup.team.manage","setup.audit.view",
+          "data.import","data.export","data.tags.manage",
+        ].map((k) => [k, true])),
+      },
+    }),
+    prisma.profile.create({
+      data: {
+        name: "営業担当",
+        description: "標準的な営業担当者プロファイル",
+        permissions: Object.fromEntries([
+          "company.view","company.create","company.edit",
+          "contact.view","contact.create","contact.edit",
+          "deal.view","deal.create","deal.edit",
+          "activity.view","activity.create","activity.edit",
+          "task.view","task.create","task.edit",
+          "report.view","dashboard.view",
+          "ma.view","ma.prospect.view",
+        ].map((k) => [k, true])),
+      },
+    }),
+  ]);
+
+  // Roles
+  const [ceoRole, salesDirRole, salesMgrRole] = await Promise.all([
+    prisma.role.create({ data: { name: "CEO", description: "最高経営責任者", sortOrder: 1 } }),
+    prisma.role.create({ data: { name: "営業本部長", description: "営業部門トップ", sortOrder: 2 } }),
+    prisma.role.create({ data: { name: "営業マネージャー", description: "営業チームリーダー", sortOrder: 3 } }),
+  ]);
+  await prisma.role.update({ where: { id: salesDirRole.id }, data: { parentId: ceoRole.id } });
+  await prisma.role.update({ where: { id: salesMgrRole.id }, data: { parentId: salesDirRole.id } });
+
+  // Permission sets
+  const [maWritePS] = await Promise.all([
+    prisma.permissionSet.create({
+      data: {
+        name: "ma_write",
+        label: "MAフル編集",
+        description: "マーケティングオートメーションの全編集権限",
+        permissions: Object.fromEntries([
+          "ma.view","ma.prospect.view","ma.prospect.edit","ma.email.view","ma.email.send",
+          "ma.form.view","ma.form.edit","ma.program.view","ma.program.edit",
+        ].map((k) => [k, true])),
+      },
+    }),
+    prisma.permissionSet.create({
+      data: {
+        name: "data_admin",
+        label: "データ管理者",
+        description: "インポート・エクスポート・タグ管理権限",
+        permissions: Object.fromEntries(["data.import","data.export","data.tags.manage"].map((k) => [k, true])),
+      },
+    }),
+  ]);
+
+  // Org & security defaults
+  await prisma.orgSettings.create({ data: { id: "singleton", orgName: "デモ株式会社" } });
+  await prisma.securitySettings.create({ data: { id: "singleton" } });
+
   // Users
   const hashedPassword = await bcrypt.hash("password123", 12);
   const [adminUser] = await Promise.all([
     prisma.user.create({
-      data: { email: "admin@example.com", name: "管理者", passwordHash: hashedPassword, role: "ADMIN" },
+      data: { email: "admin@example.com", name: "管理者", passwordHash: hashedPassword, role: "ADMIN", profileId: adminProfile.id, department: "システム管理", title: "システム管理者" },
     }),
     prisma.user.create({
-      data: { email: "manager@example.com", name: "田中マネージャー", passwordHash: hashedPassword, role: "MANAGER" },
+      data: { email: "manager@example.com", name: "田中マネージャー", passwordHash: hashedPassword, role: "MANAGER", profileId: managerProfile.id, department: "営業部", title: "営業マネージャー" },
     }),
     prisma.user.create({
-      data: { email: "sales1@example.com", name: "山田 営業一郎", passwordHash: hashedPassword, role: "SALES" },
+      data: { email: "sales1@example.com", name: "山田 営業一郎", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業1課", title: "営業担当" },
     }),
     prisma.user.create({
-      data: { email: "sales2@example.com", name: "佐藤 営業花子", passwordHash: hashedPassword, role: "SALES" },
+      data: { email: "sales2@example.com", name: "佐藤 営業花子", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業2課", title: "シニア営業担当" },
     }),
     prisma.user.create({
-      data: { email: "sales3@example.com", name: "鈴木 営業次郎", passwordHash: hashedPassword, role: "SALES" },
+      data: { email: "sales3@example.com", name: "鈴木 営業次郎", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業1課", title: "営業担当" },
     }),
   ]);
 

@@ -8,18 +8,196 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String?
-  passwordHash String
-  role         String    @default("SALES")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  name                 String?
+  passwordHash         String
+  role                 String    @default("SALES")
+  status               String    @default("ACTIVE") // PENDING, ACTIVE, DISABLED, LOCKED
+  profileId            String?
+  department           String?
+  title                String?
+  phone                String?
+  timezone             String    @default("Asia/Tokyo")
+  locale               String    @default("ja")
+  defaultAppId         String?
+  forcePasswordChange  Boolean   @default(false)
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
+  lastLoginAt          DateTime?
+  passwordChangedAt    DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
 
-  auditLogs  AuditLog[]
-  reports    Report[]
-  dashboards Dashboard[]
+  profile                Profile?                  @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  auditLogs              AuditLog[]
+  reports                Report[]
+  dashboards             Dashboard[]
+  permissionSetAssignments PermissionSetAssignment[]
+  appAccess              UserAppAccess[]
+  teamMemberships        TeamMember[]
+  loginHistory           LoginHistory[]
+  sentInvitations        UserInvitation[]          @relation("InvitedBy")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  parentId    String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   Role?  @relation("RoleHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Role[] @relation("RoleHierarchy")
+
+  @@index([parentId])
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  permissions Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+}
+
+model PermissionSet {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  label       String
+  description String?
+  permissions Json     @default("{}")
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments PermissionSetAssignment[]
+}
+
+model PermissionSetAssignment {
+  id              String   @id @default(cuid())
+  userId          String
+  permissionSetId String
+  assignedAt      DateTime @default(now())
+  assignedById    String?
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissionSet PermissionSet @relation(fields: [permissionSetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionSetId])
+  @@index([userId])
+  @@index([permissionSetId])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members TeamMember[]
+}
+
+model TeamMember {
+  teamId   String
+  userId   String
+  role     String   @default("member") // member, lead
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+}
+
+model UserAppAccess {
+  userId    String
+  appId     String
+  grantedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, appId])
+  @@index([userId])
+}
+
+model SecuritySettings {
+  id                   String   @id @default("singleton")
+  minPasswordLength    Int      @default(8)
+  requireUppercase     Boolean  @default(true)
+  requireNumbers       Boolean  @default(true)
+  requireSymbols       Boolean  @default(false)
+  passwordExpiryDays   Int      @default(0)
+  maxLoginAttempts     Int      @default(5)
+  lockoutDurationMins  Int      @default(30)
+  sessionTimeoutMins   Int      @default(480)
+  mfaRequired          Boolean  @default(false)
+  ipWhitelist          Json     @default("[]")
+  updatedAt            DateTime @updatedAt
+}
+
+model OrgSettings {
+  id           String   @id @default("singleton")
+  orgName      String   @default("My Organization")
+  orgTimezone  String   @default("Asia/Tokyo")
+  orgLocale    String   @default("ja")
+  fiscalMonth  Int      @default(4)
+  dateFormat   String   @default("YYYY/MM/DD")
+  currency     String   @default("JPY")
+  updatedAt    DateTime @updatedAt
+}
+
+model UserInvitation {
+  id          String    @id @default(cuid())
+  email       String
+  name        String?
+  role        String    @default("SALES")
+  profileId   String?
+  token       String    @unique
+  invitedById String?
+  acceptedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  invitedBy User? @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([token])
+  @@index([email])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email])
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  status    String   @default("success") // success, failed, locked
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Company {
