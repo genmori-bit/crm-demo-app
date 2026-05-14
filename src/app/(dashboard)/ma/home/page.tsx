@@ -2,11 +2,37 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { KpiCard } from "@/components/ui/kpi-card";
+import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
+import { CueCard } from "@/components/ui/cue-card";
+import { PageLoading } from "@/components/ui/loading";
+import { DonutChart } from "@/components/ui/simple-chart";
 
 interface Stats {
-  prospects: { total: number; active: number; converted: number; optedOut: number; avgScore: number };
-  emails: { total: number; sent: number; drafts: number; scheduled: number; totalSent: number; totalOpened: number; totalClicked: number };
+  prospects: {
+    total: number;
+    active: number;
+    converted: number;
+    optedOut: number;
+    avgScore: number;
+  };
+  emails: {
+    total: number;
+    sent: number;
+    drafts: number;
+    scheduled: number;
+    totalSent: number;
+    totalOpened: number;
+    totalClicked: number;
+  };
 }
+
+const GRADE_COLORS: Record<string, string> = {
+  A: "#2e844a",
+  B: "#0176d3",
+  C: "#dd7a01",
+  D: "#706e6b",
+};
 
 export default function MAHomePage() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -18,107 +44,363 @@ export default function MAHomePage() {
     ]).then(([prospects, emails]) => setStats({ prospects, emails }));
   }, []);
 
-  const openRate = stats && stats.emails.totalSent > 0
-    ? Math.round((stats.emails.totalOpened / stats.emails.totalSent) * 100)
-    : 0;
-  const clickRate = stats && stats.emails.totalSent > 0
-    ? Math.round((stats.emails.totalClicked / stats.emails.totalSent) * 100)
-    : 0;
+  const today = new Date();
+  const dateLabel = today.toLocaleDateString("ja-JP", {
+    year: "numeric", month: "long", day: "numeric", weekday: "short",
+  });
+
+  const openRate =
+    stats && stats.emails.totalSent > 0
+      ? Math.round((stats.emails.totalOpened / stats.emails.totalSent) * 100)
+      : 0;
+  const clickRate =
+    stats && stats.emails.totalSent > 0
+      ? Math.round((stats.emails.totalClicked / stats.emails.totalSent) * 100)
+      : 0;
+
+  const prospectStatusData = stats
+    ? [
+        { label: "アクティブ", value: stats.prospects.active, color: "#0176d3" },
+        { label: "コンバート済み", value: stats.prospects.converted, color: "#2e844a" },
+        { label: "オプトアウト", value: stats.prospects.optedOut, color: "#706e6b" },
+        {
+          label: "その他",
+          value: Math.max(
+            0,
+            stats.prospects.total - stats.prospects.active - stats.prospects.converted - stats.prospects.optedOut
+          ),
+          color: "#dd7a01",
+        },
+      ].filter((d) => d.value > 0)
+    : [];
+
+  if (!stats) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-sf-text">マーケティングホーム</h1>
+        </div>
+        <PageLoading />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-sf-text">マーケティングホーム</h1>
-        <p className="text-sm text-sf-weak mt-1">プロスペクトとエンゲージメントの概要</p>
+    <div className="flex flex-col min-h-screen">
+      {/* Page header */}
+      <div className="bg-sf-surface border-b border-sf-border px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-sf-text">マーケティングホーム</h1>
+            <p className="text-xs text-sf-weak mt-0.5">{dateLabel} · プロスペクトとエンゲージメントの概要</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/ma/prospects/new"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-sf-text border border-sf-border rounded-sf hover:bg-sf-bg transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              プロスペクト追加
+            </Link>
+            <Link
+              href="/ma/emails/new"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary-500 text-white rounded-sf hover:bg-primary-600 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              メール作成
+            </Link>
+          </div>
+        </div>
       </div>
 
-      {/* Prospect Stats */}
-      <section>
-        <h2 className="text-sm font-semibold text-sf-weak uppercase tracking-wider mb-3">プロスペクト</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[
-            { label: "合計", value: stats?.prospects.total ?? "—", href: "/ma/prospects" },
-            { label: "アクティブ", value: stats?.prospects.active ?? "—", href: "/ma/prospects?status=active" },
-            { label: "コンバート済み", value: stats?.prospects.converted ?? "—", href: "/ma/prospects?status=converted" },
-            { label: "オプトアウト", value: stats?.prospects.optedOut ?? "—", href: "/ma/prospects?optedOut=true" },
-            { label: "平均スコア", value: stats?.prospects.avgScore ?? "—", href: "/ma/scoring" },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="bg-sf-surface border border-sf-border rounded-sf p-4 hover:border-primary-500 transition-colors"
-            >
-              <div className="text-2xl font-bold text-sf-text">{item.value}</div>
-              <div className="text-xs text-sf-weak mt-1">{item.label}</div>
-            </Link>
-          ))}
+      <div className="p-6 flex-1 space-y-5">
+        {/* KPI row */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+          <KpiCard
+            label="プロスペクト数"
+            value={`${stats.prospects.total}人`}
+            sub={`アクティブ ${stats.prospects.active}人`}
+            accent="primary"
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="コンバート済み"
+            value={`${stats.prospects.converted}人`}
+            sub={stats.prospects.total > 0 ? `転換率 ${Math.round((stats.prospects.converted / stats.prospects.total) * 100)}%` : "—"}
+            accent="success"
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="平均スコア"
+            value={stats.prospects.avgScore ?? "—"}
+            sub="スコアリング集計"
+            accent="default"
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="メール送信数"
+            value={stats.emails.totalSent.toLocaleString()}
+            sub={`送信済み ${stats.emails.sent}件`}
+            accent="primary"
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="開封率"
+            value={`${openRate}%`}
+            sub="ユニーク開封"
+            accent={openRate >= 20 ? "success" : openRate >= 10 ? "warning" : "danger"}
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            }
+          />
+          <KpiCard
+            label="クリック率"
+            value={`${clickRate}%`}
+            sub="ユニーククリック"
+            accent={clickRate >= 5 ? "success" : clickRate >= 2 ? "warning" : "danger"}
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+            }
+          />
         </div>
-      </section>
 
-      {/* Email Stats */}
-      <section>
-        <h2 className="text-sm font-semibold text-sf-weak uppercase tracking-wider mb-3">メール</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: "送信済みメール", value: stats?.emails.sent ?? "—", href: "/ma/emails?status=sent" },
-            { label: "合計送信数", value: stats?.emails.totalSent.toLocaleString() ?? "—", href: "/ma/emails" },
-            { label: "開封率", value: `${openRate}%`, href: "/ma/reports" },
-            { label: "クリック率", value: `${clickRate}%`, href: "/ma/reports" },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="bg-sf-surface border border-sf-border rounded-sf p-4 hover:border-primary-500 transition-colors"
-            >
-              <div className="text-2xl font-bold text-sf-text">{item.value}</div>
-              <div className="text-xs text-sf-weak mt-1">{item.label}</div>
-            </Link>
-          ))}
-        </div>
-      </section>
+        {/* Main 2-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-      {/* Quick Actions */}
-      <section>
-        <h2 className="text-sm font-semibold text-sf-weak uppercase tracking-wider mb-3">クイックアクション</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: "プロスペクト追加", href: "/ma/prospects/new", desc: "新規プロスペクトを手動で追加" },
-            { label: "メール作成", href: "/ma/emails/new", desc: "新規メールキャンペーンを作成" },
-            { label: "フォーム作成", href: "/ma/forms/new", desc: "リード獲得フォームを作成" },
-            { label: "リスト作成", href: "/ma/lists/new", desc: "プロスペクトリストを作成" },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="bg-sf-surface border border-sf-border rounded-sf p-4 hover:bg-gray-50 transition-colors"
-            >
-              <div className="text-sm font-semibold text-primary-600">{item.label}</div>
-              <div className="text-xs text-sf-weak mt-1">{item.desc}</div>
-            </Link>
-          ))}
-        </div>
-      </section>
+          {/* Left column (2/3) */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Quick actions as cue cards */}
+            <LightningCard>
+              <LightningCardHeader
+                title="クイックアクション"
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                }
+              />
+              <LightningCardBody>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <CueCard
+                    title="プロスペクト追加"
+                    description="新規プロスペクトを手動で登録します"
+                    href="/ma/prospects/new"
+                    accent="primary"
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                      </svg>
+                    }
+                  />
+                  <CueCard
+                    title="メールキャンペーン作成"
+                    description="新規メールを作成してリストに配信します"
+                    href="/ma/emails/new"
+                    accent="primary"
+                    badge={stats.emails.drafts > 0 ? `下書き ${stats.emails.drafts}件` : undefined}
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    }
+                  />
+                  <CueCard
+                    title="フォーム作成"
+                    description="リード獲得フォームを作成・公開します"
+                    href="/ma/forms/new"
+                    accent="success"
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    }
+                  />
+                  <CueCard
+                    title="プロスペクトリスト作成"
+                    description="セグメント別にリストを作成して管理します"
+                    href="/ma/lists/new"
+                    accent="success"
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                      </svg>
+                    }
+                  />
+                  <CueCard
+                    title="オートメーションルール設定"
+                    description="条件に応じた自動アクションを設定します"
+                    href="/ma/automation-rules"
+                    accent="warning"
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    }
+                  />
+                  <CueCard
+                    title="エンゲージメントプログラム"
+                    description="ナーチャリングフローを作成・管理します"
+                    href="/ma/engagement-programs"
+                    accent="warning"
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                      </svg>
+                    }
+                  />
+                </div>
+              </LightningCardBody>
+            </LightningCard>
 
-      {/* Pipeline Status */}
-      <section>
-        <h2 className="text-sm font-semibold text-sf-weak uppercase tracking-wider mb-3">メールパイプライン</h2>
-        <div className="bg-sf-surface border border-sf-border rounded-sf divide-y divide-sf-border">
-          {[
-            { label: "下書き", value: stats?.emails.drafts ?? "—", href: "/ma/emails?status=draft", color: "text-sf-weak" },
-            { label: "スケジュール済み", value: stats?.emails.scheduled ?? "—", href: "/ma/emails?status=scheduled", color: "text-yellow-600" },
-            { label: "送信済み", value: stats?.emails.sent ?? "—", href: "/ma/emails?status=sent", color: "text-green-600" },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <span className="text-sm text-sf-text">{item.label}</span>
-              <span className={`text-sm font-semibold ${item.color}`}>{item.value}</span>
-            </Link>
-          ))}
+            {/* Email pipeline */}
+            <LightningCard>
+              <LightningCardHeader
+                title="メールパイプライン"
+                action={
+                  <Link href="/ma/emails" className="text-xs text-primary-500 hover:underline">
+                    メール一覧
+                  </Link>
+                }
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                }
+              />
+              <div className="divide-y divide-sf-border">
+                {[
+                  {
+                    label: "下書き",
+                    value: stats.emails.drafts,
+                    href: "/ma/emails?status=draft",
+                    dot: "bg-sf-weak",
+                    textColor: "text-sf-text",
+                  },
+                  {
+                    label: "スケジュール済み",
+                    value: stats.emails.scheduled,
+                    href: "/ma/emails?status=scheduled",
+                    dot: "bg-warning",
+                    textColor: "text-warning",
+                  },
+                  {
+                    label: "送信済み",
+                    value: stats.emails.sent,
+                    href: "/ma/emails?status=sent",
+                    dot: "bg-success",
+                    textColor: "text-success",
+                  },
+                ].map((item) => (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="flex items-center justify-between px-4 py-3 hover:bg-sf-bg transition-colors group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-2 h-2 rounded-full ${item.dot}`} />
+                      <span className="text-sm text-sf-text">{item.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold tabular-nums ${item.textColor}`}>{item.value}件</span>
+                      <svg className="w-3.5 h-3.5 text-sf-weak group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </LightningCard>
+          </div>
+
+          {/* Right sidebar (1/3) */}
+          <div className="space-y-5">
+            {/* Prospect status donut */}
+            <LightningCard>
+              <LightningCardHeader
+                title="プロスペクトステータス"
+                action={
+                  <Link href="/ma/prospects" className="text-xs text-primary-500 hover:underline">
+                    一覧
+                  </Link>
+                }
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                }
+              />
+              <LightningCardBody>
+                {prospectStatusData.length === 0 ? (
+                  <p className="text-sm text-sf-weak text-center py-4">データがありません</p>
+                ) : (
+                  <DonutChart data={prospectStatusData} size={110} centerLabel="人" />
+                )}
+              </LightningCardBody>
+            </LightningCard>
+
+            {/* Reports nav */}
+            <LightningCard>
+              <LightningCardHeader
+                title="レポート"
+                action={
+                  <Link href="/ma/reports" className="text-xs text-primary-500 hover:underline">
+                    すべて表示
+                  </Link>
+                }
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                }
+              />
+              <div className="divide-y divide-sf-border">
+                {[
+                  { label: "メールパフォーマンス", href: "/ma/reports" },
+                  { label: "プロスペクトスコアリング", href: "/ma/scoring" },
+                  { label: "フォーム提出レポート", href: "/ma/forms" },
+                  { label: "エンゲージメント分析", href: "/ma/engagement-programs" },
+                ].map((item) => (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="flex items-center justify-between px-4 py-2.5 hover:bg-sf-bg transition-colors group"
+                  >
+                    <span className="text-xs text-sf-text group-hover:text-primary-600 transition-colors">{item.label}</span>
+                    <svg className="w-3.5 h-3.5 text-sf-weak group-hover:text-primary-500 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                ))}
+              </div>
+            </LightningCard>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

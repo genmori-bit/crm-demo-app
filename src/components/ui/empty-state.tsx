@@ -1,8 +1,17 @@
+interface EmptyStateAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface EmptyStateProps {
   title: string;
   description?: string;
-  action?: React.ReactNode;
+  action?: React.ReactNode | EmptyStateAction;
   icon?: React.ReactNode;
+}
+
+function isActionObject(v: unknown): v is EmptyStateAction {
+  return typeof v === "object" && v !== null && "label" in v && "onClick" in v;
 }
 
 export function EmptyState({ title, description, action, icon }: EmptyStateProps) {
@@ -17,7 +26,18 @@ export function EmptyState({ title, description, action, icon }: EmptyStateProps
       </div>
       <h3 className="text-sm font-semibold text-sf-text mb-1">{title}</h3>
       {description && <p className="text-xs text-sf-weak mb-4 max-w-xs">{description}</p>}
-      {action && <div className="mt-1">{action}</div>}
+      {action && (
+        <div className="mt-1">
+          {isActionObject(action) ? (
+            <button
+              onClick={action.onClick}
+              className="px-4 py-2 text-xs font-medium bg-primary-500 text-white rounded-sf hover:bg-primary-600 transition-colors"
+            >
+              {action.label}
+            </button>
+          ) : action}
+        </div>
+      )}
     </div>
   );
 }

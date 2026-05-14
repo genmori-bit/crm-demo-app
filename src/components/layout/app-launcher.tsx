@@ -16,11 +16,14 @@ export function AppLauncher({ currentAppId, onSelect }: AppLauncherProps) {
   const [search, setSearch] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setSearch(""); return; }
+    setTimeout(() => searchRef.current?.focus(), 50);
+
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") { setOpen(false); buttonRef.current?.focus(); }
     }
     function handleClick(e: MouseEvent) {
       if (
@@ -48,29 +51,32 @@ export function AppLauncher({ currentAppId, onSelect }: AppLauncherProps) {
     onSelect(id);
     router.push(app.defaultPath);
     setOpen(false);
-    setSearch("");
   }
 
   return (
     <div className="relative">
       <button
         ref={buttonRef}
-        onClick={() => setOpen(!open)}
-        className="w-9 h-9 rounded flex items-center justify-center text-white/70 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "w-9 h-9 rounded flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-white/40",
+          open ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
+        )}
         aria-label="アプリケーションランチャー"
         aria-expanded={open}
         aria-haspopup="dialog"
       >
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="3" y="3" width="4" height="4" rx="1" />
-          <rect x="10" y="3" width="4" height="4" rx="1" />
-          <rect x="17" y="3" width="4" height="4" rx="1" />
-          <rect x="3" y="10" width="4" height="4" rx="1" />
-          <rect x="10" y="10" width="4" height="4" rx="1" />
-          <rect x="17" y="10" width="4" height="4" rx="1" />
-          <rect x="3" y="17" width="4" height="4" rx="1" />
-          <rect x="10" y="17" width="4" height="4" rx="1" />
-          <rect x="17" y="17" width="4" height="4" rx="1" />
+        {/* 9-dot grid icon */}
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="4" cy="4" r="1.5" />
+          <circle cx="10" cy="4" r="1.5" />
+          <circle cx="16" cy="4" r="1.5" />
+          <circle cx="4" cy="10" r="1.5" />
+          <circle cx="10" cy="10" r="1.5" />
+          <circle cx="16" cy="10" r="1.5" />
+          <circle cx="4" cy="16" r="1.5" />
+          <circle cx="10" cy="16" r="1.5" />
+          <circle cx="16" cy="16" r="1.5" />
         </svg>
       </button>
 
@@ -79,32 +85,36 @@ export function AppLauncher({ currentAppId, onSelect }: AppLauncherProps) {
           ref={panelRef}
           role="dialog"
           aria-label="アプリケーションランチャー"
-          className="absolute left-0 top-full mt-1 w-80 bg-white border border-sf-border rounded-sf shadow-xl z-[100]"
+          aria-modal="true"
+          className="absolute left-0 top-[calc(100%+4px)] w-[340px] bg-sf-surface border border-sf-border rounded-sf shadow-dropdown z-[200] overflow-hidden"
         >
           {/* Header */}
-          <div className="px-4 py-3 border-b border-sf-border">
-            <h2 className="text-sm font-bold text-sf-text">アプリケーションランチャー</h2>
+          <div className="px-4 pt-3.5 pb-2.5 border-b border-sf-border">
+            <p className="text-xs font-bold text-sf-weak uppercase tracking-wider">アプリケーションランチャー</p>
           </div>
 
           {/* Search */}
-          <div className="px-3 py-2 border-b border-sf-border">
+          <div className="px-3 py-2.5 border-b border-sf-border bg-sf-bg">
             <div className="relative">
-              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sf-weak" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sf-weak pointer-events-none"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
+                ref={searchRef}
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="アプリを検索..."
-                autoFocus
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-sf-border rounded-sf focus:outline-none focus:ring-1 focus:ring-primary-500 bg-sf-bg text-sf-text placeholder:text-sf-weak"
+                className="w-full h-8 pl-8 pr-3 text-sm border border-sf-border rounded-sf focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500 bg-white text-sf-text placeholder:text-sf-placeholder transition-colors"
               />
             </div>
           </div>
 
           {/* App grid */}
-          <div className="p-3 grid grid-cols-2 gap-2 max-h-72 overflow-y-auto">
+          <div className="p-3 grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
             {filtered.map((app) => {
               const isActive = app.id === currentAppId;
               return (
@@ -112,28 +122,53 @@ export function AppLauncher({ currentAppId, onSelect }: AppLauncherProps) {
                   key={app.id}
                   onClick={() => handleSelect(app.id)}
                   className={cn(
-                    "flex flex-col items-center gap-2 p-3 rounded-sf border text-center transition-all hover:shadow-sm",
+                    "group flex flex-col items-center gap-2 p-3 rounded-sf border text-center transition-all focus:outline-none focus:ring-2 focus:ring-primary-200",
                     isActive
-                      ? "border-primary-500 bg-primary-50 text-primary-700"
-                      : "border-sf-border hover:border-primary-300 hover:bg-sf-bg text-sf-text"
+                      ? "border-primary-400 bg-primary-50 shadow-sm"
+                      : "border-sf-border hover:border-primary-200 hover:bg-sf-bg hover:shadow-sm"
                   )}
                 >
-                  <span className="text-2xl">{app.icon}</span>
-                  <div>
-                    <p className="text-xs font-semibold">{app.label}</p>
+                  {/* Icon box */}
+                  <div className={cn(
+                    "w-10 h-10 rounded-sf flex items-center justify-center text-white shadow-sm relative",
+                    app.iconColor
+                  )}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" strokeWidth={1.7}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={app.iconPath} />
+                    </svg>
                     {isActive && (
-                      <span className="inline-flex items-center gap-0.5 text-2xs text-primary-600 mt-0.5">
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                        選択中
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary-500 rounded-full flex items-center justify-center">
+                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
                       </span>
                     )}
+                  </div>
+
+                  {/* Label */}
+                  <div className="min-w-0 w-full">
+                    <p className={cn(
+                      "text-xs font-semibold leading-tight truncate",
+                      isActive ? "text-primary-700" : "text-sf-text group-hover:text-primary-600"
+                    )}>
+                      {app.label}
+                    </p>
                   </div>
                 </button>
               );
             })}
             {filtered.length === 0 && (
-              <p className="col-span-2 text-center text-xs text-sf-weak py-4">見つかりません</p>
+              <p className="col-span-3 text-center text-xs text-sf-weak py-6">
+                「{search}」に一致するアプリが見つかりません
+              </p>
             )}
+          </div>
+
+          {/* Footer hint */}
+          <div className="px-4 py-2 border-t border-sf-border bg-sf-bg">
+            <p className="text-2xs text-sf-weak text-center">
+              Esc キーで閉じる
+            </p>
           </div>
         </div>
       )}

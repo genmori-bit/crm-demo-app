@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Prospect {
   id: string;
@@ -28,21 +28,44 @@ interface Result {
   totalPages: number;
 }
 
-const GRADE_COLORS: Record<string, string> = {
-  "A+": "bg-green-100 text-green-800",
-  A: "bg-green-100 text-green-700",
-  B: "bg-blue-100 text-blue-700",
-  C: "bg-yellow-100 text-yellow-700",
-  D: "bg-gray-100 text-gray-600",
-  F: "bg-red-100 text-red-700",
+const GRADE_STYLE: Record<string, string> = {
+  "A+": "bg-green-100 text-green-800 border-green-200",
+  A: "bg-green-100 text-green-700 border-green-200",
+  B: "bg-blue-100 text-blue-700 border-blue-200",
+  C: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  D: "bg-gray-100 text-gray-600 border-gray-200",
+  F: "bg-red-100 text-red-700 border-red-200",
 };
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "アクティブ",
+  paused: "一時停止",
+  blacklisted: "ブラックリスト",
+  converted: "コンバート済み",
+};
+
+function ProspectStatusBadge({ prospect }: { prospect: Prospect }) {
+  if (prospect.optedOut) {
+    return <span className="inline-flex items-center gap-1 text-2xs font-medium text-danger"><span className="w-1.5 h-1.5 rounded-full bg-danger" />オプトアウト</span>;
+  }
+  if (prospect.doNotEmail) {
+    return <span className="inline-flex items-center gap-1 text-2xs font-medium text-warning"><span className="w-1.5 h-1.5 rounded-full bg-warning" />メール停止</span>;
+  }
+  const isActive = prospect.status === "active";
+  const isConverted = prospect.status === "converted";
+  return (
+    <span className={`inline-flex items-center gap-1 text-2xs font-medium ${isActive ? "text-success" : isConverted ? "text-primary-600" : "text-sf-weak"}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-success" : isConverted ? "bg-primary-500" : "bg-sf-weak"}`} />
+      {STATUS_LABELS[prospect.status] ?? prospect.status}
+    </span>
+  );
+}
 
 export default function ProspectsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [result, setResult] = useState<Result | null>(null);
-  const [search, setSearch] = useState(searchParams.get("search") ?? "");
-  const [status, setStatus] = useState(searchParams.get("status") ?? "");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async (page = 1) => {
@@ -57,87 +80,121 @@ export default function ProspectsPage() {
 
   useEffect(() => { load(1); }, [load]);
 
-  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); load(1); };
-
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-sf-text">プロスペクト</h1>
-          <p className="text-sm text-sf-weak">{result?.total ?? "—"} 件</p>
+    <div className="flex flex-col min-h-screen">
+      {/* Page header */}
+      <div className="bg-sf-surface border-b border-sf-border px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-sf-text">プロスペクト</h1>
+            <p className="text-xs text-sf-weak mt-0.5">マーケティング対象の見込み顧客</p>
+          </div>
+          <button
+            onClick={() => router.push("/ma/prospects/new")}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary-500 text-white rounded-sf hover:bg-primary-600 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            新規プロスペクト
+          </button>
         </div>
-        <Button onClick={() => router.push("/ma/prospects/new")}>新規プロスペクト</Button>
       </div>
 
-      {/* Filters */}
-      <form onSubmit={handleSearch} className="flex gap-3 items-end">
-        <div className="flex-1 max-w-xs">
-          <Input
-            placeholder="メール、氏名、会社で検索..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="h-9 rounded-sf border border-sf-border bg-sf-surface px-2 text-sm text-sf-text"
-        >
-          <option value="">全ステータス</option>
-          <option value="active">アクティブ</option>
-          <option value="paused">一時停止</option>
-          <option value="blacklisted">ブラックリスト</option>
-        </select>
-        <Button type="submit" variant="secondary">検索</Button>
-      </form>
+      {/* Toolbar */}
+      <ListViewToolbar
+        total={result?.total}
+        objectLabel="プロスペクト"
+        searchValue={search}
+        onSearchChange={setSearch}
+        onRefresh={() => load(1)}
+        filters={
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="h-8 rounded-sf border border-sf-border bg-white px-2 text-xs text-sf-text focus:outline-none focus:ring-2 focus:ring-primary-100"
+          >
+            <option value="">全ステータス</option>
+            <option value="active">アクティブ</option>
+            <option value="paused">一時停止</option>
+            <option value="converted">コンバート済み</option>
+            <option value="blacklisted">ブラックリスト</option>
+          </select>
+        }
+      />
 
       {/* Table */}
-      <div className="bg-sf-surface border border-sf-border rounded-sf overflow-hidden">
+      <div className="flex-1 overflow-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-sf-border">
+          <thead className="sticky top-0 bg-sf-bg border-b border-sf-border z-10">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-sf-weak uppercase">メール / 氏名</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-sf-weak uppercase">会社</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-sf-weak uppercase">スコア</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-sf-weak uppercase">グレード</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-sf-weak uppercase">ステータス</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-sf-weak uppercase">作成日</th>
+              <th className="text-left px-4 py-2.5 text-2xs font-semibold text-sf-weak uppercase tracking-wider">メール / 氏名</th>
+              <th className="text-left px-4 py-2.5 text-2xs font-semibold text-sf-weak uppercase tracking-wider">会社 / 役職</th>
+              <th className="text-center px-4 py-2.5 text-2xs font-semibold text-sf-weak uppercase tracking-wider w-20">スコア</th>
+              <th className="text-center px-4 py-2.5 text-2xs font-semibold text-sf-weak uppercase tracking-wider w-20">グレード</th>
+              <th className="text-left px-4 py-2.5 text-2xs font-semibold text-sf-weak uppercase tracking-wider w-32">ステータス</th>
+              <th className="text-left px-4 py-2.5 text-2xs font-semibold text-sf-weak uppercase tracking-wider w-28">作成日</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-sf-border">
+          <tbody className="divide-y divide-sf-border bg-sf-surface">
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-8 text-sf-weak">読み込み中...</td></tr>
+              <tr>
+                <td colSpan={6} className="text-center py-12 text-sm text-sf-weak">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                    読み込み中...
+                  </div>
+                </td>
+              </tr>
             ) : result?.prospects.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-8 text-sf-weak">プロスペクトがありません</td></tr>
+              <tr>
+                <td colSpan={6} className="py-16">
+                  <EmptyState
+                    title="プロスペクトがありません"
+                    description={search || status ? "検索条件に一致するプロスペクトが見つかりません" : "最初のプロスペクトを追加してマーケティングを開始しましょう"}
+                    action={!search && !status ? {
+                      label: "新規プロスペクト",
+                      onClick: () => router.push("/ma/prospects/new"),
+                    } : undefined}
+                  />
+                </td>
+              </tr>
             ) : result?.prospects.map((p) => (
-              <tr key={p.id} className="hover:bg-gray-50">
+              <tr key={p.id} className="hover:bg-sf-bg transition-colors group">
                 <td className="px-4 py-3">
-                  <Link href={`/ma/prospects/${p.id}`} className="font-medium text-primary-600 hover:underline block">
+                  <Link href={`/ma/prospects/${p.id}`} className="font-medium text-primary-600 hover:underline text-xs block">
                     {p.email}
                   </Link>
                   {(p.firstName || p.lastName) && (
-                    <div className="text-xs text-sf-weak">{[p.firstName, p.lastName].filter(Boolean).join(" ")}</div>
+                    <p className="text-2xs text-sf-weak mt-0.5">{[p.firstName, p.lastName].filter(Boolean).join(" ")}</p>
                   )}
                 </td>
-                <td className="px-4 py-3 text-sf-text">{p.company ?? "—"}</td>
-                <td className="px-4 py-3 text-center font-semibold text-sf-text">{p.score}</td>
+                <td className="px-4 py-3">
+                  {p.company ? (
+                    <>
+                      <p className="text-xs text-sf-text">{p.company}</p>
+                      {p.jobTitle && <p className="text-2xs text-sf-weak mt-0.5">{p.jobTitle}</p>}
+                    </>
+                  ) : (
+                    <span className="text-2xs text-sf-placeholder">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${GRADE_COLORS[p.grade] ?? "bg-gray-100 text-gray-600"}`}>
+                  <span className="text-xs font-bold tabular-nums text-sf-text">{p.score}</span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <span className={`inline-block px-2 py-0.5 rounded border text-2xs font-bold ${GRADE_STYLE[p.grade] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
                     {p.grade}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  {p.optedOut ? (
-                    <span className="text-xs text-red-600">オプトアウト</span>
-                  ) : p.doNotEmail ? (
-                    <span className="text-xs text-orange-600">メール停止</span>
-                  ) : (
-                    <span className={`text-xs ${p.status === "active" ? "text-green-600" : "text-sf-weak"}`}>
-                      {p.status === "active" ? "アクティブ" : p.status === "paused" ? "一時停止" : p.status}
-                    </span>
-                  )}
+                  <ProspectStatusBadge prospect={p} />
                 </td>
-                <td className="px-4 py-3 text-sf-weak text-xs">{new Date(p.createdAt).toLocaleDateString("ja-JP")}</td>
+                <td className="px-4 py-3">
+                  <span className="text-2xs text-sf-weak tabular-nums">
+                    {new Date(p.createdAt).toLocaleDateString("ja-JP")}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -146,11 +203,25 @@ export default function ProspectsPage() {
 
       {/* Pagination */}
       {result && result.totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-sf-weak">{result.total} 件中 {(result.page - 1) * 50 + 1}–{Math.min(result.page * 50, result.total)} 件</span>
-          <div className="flex gap-2">
-            {result.page > 1 && <Button variant="secondary" onClick={() => load(result.page - 1)}>前へ</Button>}
-            {result.page < result.totalPages && <Button variant="secondary" onClick={() => load(result.page + 1)}>次へ</Button>}
+        <div className="bg-sf-surface border-t border-sf-border px-4 py-2 flex items-center justify-between">
+          <span className="text-xs text-sf-weak">
+            {result.total.toLocaleString("ja-JP")}件中 {(result.page - 1) * 50 + 1}–{Math.min(result.page * 50, result.total)}件
+          </span>
+          <div className="flex gap-1">
+            <button
+              disabled={result.page <= 1}
+              onClick={() => load(result.page - 1)}
+              className="h-7 px-3 text-xs rounded-sf border border-sf-border text-sf-text hover:bg-sf-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              前へ
+            </button>
+            <button
+              disabled={result.page >= result.totalPages}
+              onClick={() => load(result.page + 1)}
+              className="h-7 px-3 text-xs rounded-sf border border-sf-border text-sf-text hover:bg-sf-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              次へ
+            </button>
           </div>
         </div>
       )}
