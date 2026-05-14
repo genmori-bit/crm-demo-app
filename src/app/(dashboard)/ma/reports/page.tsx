@@ -2,10 +2,34 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { KpiCard } from "@/components/ui/kpi-card";
+import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
+import { PageLoading } from "@/components/ui/loading";
+import { cn } from "@/lib/utils";
 
 interface Stats {
   prospects: { total: number; active: number; converted: number; optedOut: number; avgScore: number };
   emails: { total: number; sent: number; drafts: number; scheduled: number; totalSent: number; totalOpened: number; totalClicked: number };
+}
+
+function FunnelBar({ label, value, max, color, href }: { label: string; value: number; max: number; color: string; href?: string }) {
+  const pct = max > 0 ? (value / max) * 100 : 0;
+  const content = (
+    <div className="flex items-center gap-3 group">
+      <span className="w-20 text-xs text-sf-weak text-right shrink-0">{label}</span>
+      <div className="flex-1 bg-sf-bg rounded-full h-5 overflow-hidden">
+        <div
+          className={cn("h-5 rounded-full transition-all", color)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex items-center gap-2 w-28 shrink-0">
+        <span className="text-xs font-bold tabular-nums text-sf-text">{value.toLocaleString()}</span>
+        <span className="text-2xs text-sf-weak">({pct.toFixed(1)}%)</span>
+      </div>
+    </div>
+  );
+  return href ? <Link href={href} className="block hover:opacity-80 transition-opacity">{content}</Link> : content;
 }
 
 export default function MAReportsPage() {
@@ -18,105 +42,121 @@ export default function MAReportsPage() {
     ]).then(([prospects, emails]) => setStats({ prospects, emails }));
   }, []);
 
-  const openRate = stats && stats.emails.totalSent > 0
-    ? ((stats.emails.totalOpened / stats.emails.totalSent) * 100).toFixed(1)
-    : "—";
-  const clickRate = stats && stats.emails.totalSent > 0
-    ? ((stats.emails.totalClicked / stats.emails.totalSent) * 100).toFixed(1)
-    : "—";
-  const conversionRate = stats && stats.prospects.total > 0
-    ? ((stats.prospects.converted / stats.prospects.total) * 100).toFixed(1)
-    : "—";
+  if (!stats) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-sf-text">MAレポート</h1>
+        </div>
+        <PageLoading />
+      </div>
+    );
+  }
+
+  const openRate = stats.emails.totalSent > 0 ? (stats.emails.totalOpened / stats.emails.totalSent) * 100 : 0;
+  const clickRate = stats.emails.totalSent > 0 ? (stats.emails.totalClicked / stats.emails.totalSent) * 100 : 0;
+  const conversionRate = stats.prospects.total > 0 ? (stats.prospects.converted / stats.prospects.total) * 100 : 0;
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
+    <div className="flex flex-col min-h-screen">
+      <div className="bg-sf-surface border-b border-sf-border px-6 py-4">
         <h1 className="text-xl font-bold text-sf-text">MAレポート</h1>
-        <p className="text-sm text-sf-weak">マーケティングオートメーションの主要KPIサマリー</p>
+        <p className="text-xs text-sf-weak mt-0.5">マーケティングオートメーション KPI サマリー</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "プロスペクト総数", value: stats?.prospects.total.toLocaleString() ?? "—", sub: `アクティブ ${stats?.prospects.active ?? "—"}`, href: "/ma/prospects" },
-          { label: "コンバージョン率", value: `${conversionRate}%`, sub: `${stats?.prospects.converted ?? "—"} 件`, href: "/ma/prospects" },
-          { label: "メール開封率", value: `${openRate}%`, sub: `${stats?.emails.totalOpened.toLocaleString() ?? "—"} 件開封`, href: "/ma/emails" },
-          { label: "メールクリック率", value: `${clickRate}%`, sub: `${stats?.emails.totalClicked.toLocaleString() ?? "—"} 件クリック`, href: "/ma/emails" },
-        ].map((item) => (
-          <Link key={item.label} href={item.href}
-            className="bg-sf-surface border border-sf-border rounded-sf p-4 hover:border-primary-500 transition-colors">
-            <div className="text-2xl font-bold text-sf-text">{item.value}</div>
-            <div className="text-xs font-medium text-sf-text mt-1">{item.label}</div>
-            <div className="text-xs text-sf-weak mt-0.5">{item.sub}</div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Email Funnel */}
-      <div className="bg-sf-surface border border-sf-border rounded-sf p-5">
-        <h2 className="text-sm font-semibold text-sf-text mb-4">メールファネル</h2>
-        {stats ? (
-          <div className="space-y-2">
-            {[
-              { label: "送信数", value: stats.emails.totalSent, max: stats.emails.totalSent, color: "bg-blue-500" },
-              { label: "開封数", value: stats.emails.totalOpened, max: stats.emails.totalSent, color: "bg-green-500" },
-              { label: "クリック数", value: stats.emails.totalClicked, max: stats.emails.totalSent, color: "bg-primary-500" },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-3">
-                <div className="w-24 text-xs text-sf-weak text-right">{item.label}</div>
-                <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
-                  <div
-                    className={`h-5 rounded-full ${item.color} transition-all`}
-                    style={{ width: item.max > 0 ? `${(item.value / item.max) * 100}%` : "0%" }}
-                  />
-                </div>
-                <div className="w-20 text-xs text-sf-text font-semibold">{item.value.toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sf-weak text-sm">読み込み中...</p>
-        )}
-      </div>
-
-      {/* Prospect Score Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-sf-surface border border-sf-border rounded-sf p-5">
-          <h2 className="text-sm font-semibold text-sf-text mb-4">プロスペクト状態</h2>
-          <div className="space-y-3">
-            {[
-              { label: "アクティブ", value: stats?.prospects.active ?? 0, total: stats?.prospects.total ?? 1, color: "bg-green-500" },
-              { label: "コンバート済み", value: stats?.prospects.converted ?? 0, total: stats?.prospects.total ?? 1, color: "bg-blue-500" },
-              { label: "オプトアウト", value: stats?.prospects.optedOut ?? 0, total: stats?.prospects.total ?? 1, color: "bg-red-400" },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-3">
-                <div className="w-28 text-xs text-sf-weak">{item.label}</div>
-                <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
-                  <div className={`h-4 rounded-full ${item.color}`}
-                    style={{ width: item.total > 0 ? `${(item.value / item.total) * 100}%` : "0%" }} />
-                </div>
-                <div className="w-12 text-xs text-right font-semibold text-sf-text">{item.value.toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
+      <div className="p-6 space-y-5">
+        {/* KPI row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard
+            label="プロスペクト総数"
+            value={stats.prospects.total.toLocaleString()}
+            sub={`アクティブ ${stats.prospects.active.toLocaleString()}人`}
+            accent="primary"
+            icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+          />
+          <KpiCard
+            label="コンバージョン率"
+            value={`${conversionRate.toFixed(1)}%`}
+            sub={`${stats.prospects.converted.toLocaleString()}件転換`}
+            accent={conversionRate >= 10 ? "success" : conversionRate >= 5 ? "warning" : "danger"}
+            icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          />
+          <KpiCard
+            label="メール開封率"
+            value={`${openRate.toFixed(1)}%`}
+            sub={`${stats.emails.totalOpened.toLocaleString()}件開封`}
+            accent={openRate >= 20 ? "success" : openRate >= 10 ? "warning" : "danger"}
+            icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
+          />
+          <KpiCard
+            label="メールクリック率"
+            value={`${clickRate.toFixed(1)}%`}
+            sub={`${stats.emails.totalClicked.toLocaleString()}件クリック`}
+            accent={clickRate >= 5 ? "success" : clickRate >= 2 ? "warning" : "danger"}
+            icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" /></svg>}
+          />
         </div>
 
-        <div className="bg-sf-surface border border-sf-border rounded-sf p-5">
-          <h2 className="text-sm font-semibold text-sf-text mb-4">メールキャンペーン状況</h2>
-          <div className="space-y-2">
-            {[
-              { label: "合計", value: stats?.emails.total ?? "—" },
-              { label: "送信済み", value: stats?.emails.sent ?? "—" },
-              { label: "下書き", value: stats?.emails.drafts ?? "—" },
-              { label: "スケジュール済み", value: stats?.emails.scheduled ?? "—" },
-            ].map((item) => (
-              <div key={item.label} className="flex justify-between text-sm">
-                <span className="text-sf-weak">{item.label}</span>
-                <span className="font-semibold text-sf-text">{item.value}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Email funnel */}
+          <LightningCard>
+            <LightningCardHeader
+              title="メールエンゲージメントファネル"
+              action={<Link href="/ma/emails" className="text-xs text-primary-500 hover:underline">メール一覧</Link>}
+              icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>}
+            />
+            <LightningCardBody>
+              <div className="space-y-3">
+                <FunnelBar label="送信数" value={stats.emails.totalSent} max={stats.emails.totalSent} color="bg-primary-400" href="/ma/emails?status=sent" />
+                <FunnelBar label="開封数" value={stats.emails.totalOpened} max={stats.emails.totalSent} color="bg-success" />
+                <FunnelBar label="クリック数" value={stats.emails.totalClicked} max={stats.emails.totalSent} color="bg-purple-500" />
               </div>
+            </LightningCardBody>
+          </LightningCard>
+
+          {/* Prospect funnel */}
+          <LightningCard>
+            <LightningCardHeader
+              title="プロスペクトファネル"
+              action={<Link href="/ma/prospects" className="text-xs text-primary-500 hover:underline">プロスペクト一覧</Link>}
+              icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+            />
+            <LightningCardBody>
+              <div className="space-y-3">
+                <FunnelBar label="総数" value={stats.prospects.total} max={stats.prospects.total} color="bg-primary-400" href="/ma/prospects" />
+                <FunnelBar label="アクティブ" value={stats.prospects.active} max={stats.prospects.total} color="bg-blue-400" href="/ma/prospects?status=active" />
+                <FunnelBar label="コンバート済み" value={stats.prospects.converted} max={stats.prospects.total} color="bg-success" href="/ma/prospects?status=converted" />
+                <FunnelBar label="オプトアウト" value={stats.prospects.optedOut} max={stats.prospects.total} color="bg-danger/70" href="/ma/prospects?optedOut=true" />
+              </div>
+            </LightningCardBody>
+          </LightningCard>
+        </div>
+
+        {/* Email campaign summary */}
+        <LightningCard>
+          <LightningCardHeader
+            title="メールキャンペーン状況"
+            action={<Link href="/ma/emails" className="text-xs text-primary-500 hover:underline">すべて表示</Link>}
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-sf-border border-t border-sf-border">
+            {[
+              { label: "合計", value: stats.emails.total, href: "/ma/emails" },
+              { label: "送信済み", value: stats.emails.sent, href: "/ma/emails?status=sent", color: "text-success" },
+              { label: "下書き", value: stats.emails.drafts, href: "/ma/emails?status=draft", color: "text-sf-weak" },
+              { label: "スケジュール済み", value: stats.emails.scheduled, href: "/ma/emails?status=scheduled", color: "text-warning" },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex flex-col items-center py-4 px-3 hover:bg-sf-bg transition-colors"
+              >
+                <span className={cn("text-2xl font-bold tabular-nums", item.color ?? "text-sf-text")}>{item.value}</span>
+                <span className="text-2xs text-sf-weak mt-1">{item.label}</span>
+              </Link>
             ))}
           </div>
-        </div>
+        </LightningCard>
       </div>
     </div>
   );
