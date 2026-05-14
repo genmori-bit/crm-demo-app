@@ -33,19 +33,21 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const { id } = await params;
   const body = await request.json();
-  const parsed = dealSchema.safeParse(body);
+  const parsed = dealSchema.partial().safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
   const { expectedCloseDate, contactId, ...rest } = parsed.data;
+  const updateData: Record<string, unknown> = { ...rest };
+  if ("contactId" in parsed.data) updateData.contactId = contactId || null;
+  if ("expectedCloseDate" in parsed.data) {
+    updateData.expectedCloseDate = expectedCloseDate ? new Date(expectedCloseDate) : null;
+  }
+
   const deal = await prisma.deal.update({
     where: { id },
-    data: {
-      ...rest,
-      contactId: contactId || null,
-      expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate) : null,
-    },
+    data: updateData,
   });
   return NextResponse.json(deal);
 }
