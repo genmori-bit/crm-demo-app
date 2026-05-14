@@ -7,13 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ===================== Auth & Settings =====================
+
 model User {
   id                   String    @id @default(cuid())
   email                String    @unique
   name                 String?
   passwordHash         String
   role                 String    @default("SALES")
-  status               String    @default("ACTIVE") // PENDING, ACTIVE, DISABLED, LOCKED
+  status               String    @default("ACTIVE")
   profileId            String?
   department           String?
   title                String?
@@ -30,15 +32,15 @@ model User {
   updatedAt            DateTime  @updatedAt
   deletedAt            DateTime?
 
-  profile                Profile?                  @relation(fields: [profileId], references: [id], onDelete: SetNull)
-  auditLogs              AuditLog[]
-  reports                Report[]
-  dashboards             Dashboard[]
+  profile                  Profile?                  @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  auditLogs                AuditLog[]
+  reports                  Report[]
+  dashboards               Dashboard[]
   permissionSetAssignments PermissionSetAssignment[]
-  appAccess              UserAppAccess[]
-  teamMemberships        TeamMember[]
-  loginHistory           LoginHistory[]
-  sentInvitations        UserInvitation[]          @relation("InvitedBy")
+  appAccess                UserAppAccess[]
+  teamMemberships          TeamMember[]
+  loginHistory             LoginHistory[]
+  sentInvitations          UserInvitation[]          @relation("InvitedBy")
 }
 
 model Role {
@@ -109,7 +111,7 @@ model Team {
 model TeamMember {
   teamId   String
   userId   String
-  role     String   @default("member") // member, lead
+  role     String   @default("member")
   joinedAt DateTime @default(now())
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -131,29 +133,29 @@ model UserAppAccess {
 }
 
 model SecuritySettings {
-  id                   String   @id @default("singleton")
-  minPasswordLength    Int      @default(8)
-  requireUppercase     Boolean  @default(true)
-  requireNumbers       Boolean  @default(true)
-  requireSymbols       Boolean  @default(false)
-  passwordExpiryDays   Int      @default(0)
-  maxLoginAttempts     Int      @default(5)
-  lockoutDurationMins  Int      @default(30)
-  sessionTimeoutMins   Int      @default(480)
-  mfaRequired          Boolean  @default(false)
-  ipWhitelist          Json     @default("[]")
-  updatedAt            DateTime @updatedAt
+  id                  String   @id @default("singleton")
+  minPasswordLength   Int      @default(8)
+  requireUppercase    Boolean  @default(true)
+  requireNumbers      Boolean  @default(true)
+  requireSymbols      Boolean  @default(false)
+  passwordExpiryDays  Int      @default(0)
+  maxLoginAttempts    Int      @default(5)
+  lockoutDurationMins Int      @default(30)
+  sessionTimeoutMins  Int      @default(480)
+  mfaRequired         Boolean  @default(false)
+  ipWhitelist         Json     @default("[]")
+  updatedAt           DateTime @updatedAt
 }
 
 model OrgSettings {
-  id           String   @id @default("singleton")
-  orgName      String   @default("My Organization")
-  orgTimezone  String   @default("Asia/Tokyo")
-  orgLocale    String   @default("ja")
-  fiscalMonth  Int      @default(4)
-  dateFormat   String   @default("YYYY/MM/DD")
-  currency     String   @default("JPY")
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default("singleton")
+  orgName     String   @default("My Organization")
+  orgTimezone String   @default("Asia/Tokyo")
+  orgLocale   String   @default("ja")
+  fiscalMonth Int      @default(4)
+  dateFormat  String   @default("YYYY/MM/DD")
+  currency    String   @default("JPY")
+  updatedAt   DateTime @updatedAt
 }
 
 model UserInvitation {
@@ -175,12 +177,12 @@ model UserInvitation {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   email     String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([email])
@@ -191,7 +193,7 @@ model LoginHistory {
   userId    String
   ipAddress String?
   userAgent String?
-  status    String   @default("success") // success, failed, locked
+  status    String   @default("success")
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -200,6 +202,8 @@ model LoginHistory {
   @@index([createdAt])
 }
 
+// ===================== CRM Core (Legacy —互換維持) =====================
+
 model Company {
   id            String    @id @default(cuid())
   companyName   String
@@ -207,47 +211,91 @@ model Company {
   industry      String?
   employeeSize  String?
   status        String    @default("prospect")
+  type          String    @default("PROSPECT")
   ownerName     String?
+  ownerId       String?
   phone         String?
   address       String?
+  billingCountry    String?
+  billingPrefecture String?
+  billingCity       String?
+  billingAddress    String?
+  shippingCountry   String?
+  shippingPrefecture String?
+  shippingCity      String?
+  shippingAddress   String?
   memo          String?
   annualRevenue Float?
+  parentCompanyId   String?
+  source        String?
+  lastActivityAt    DateTime?
+  nextTaskDueAt     DateTime?
+  healthScore       Int?
+  customFields      Json      @default("{}")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  contacts   Contact[]
-  deals      Deal[]
-  activities Activity[]
-  tasks      Task[]
-  tags       CompanyTag[]
+  parentCompany Company?   @relation("CompanyHierarchy", fields: [parentCompanyId], references: [id], onDelete: SetNull)
+  childCompanies Company[] @relation("CompanyHierarchy")
+  contacts      Contact[]
+  deals         Deal[]
+  activities    Activity[]
+  tasks         Task[]
+  tags          CompanyTag[]
+  leads         Lead[]
+  cases         Case[]
+  contracts     Contract[]
+  orders        Order[]
+  campaignMembers CampaignMember[]
+  prospects     Prospect[]
+  subscriptions Subscription[]
 
   @@index([status])
   @@index([deletedAt])
   @@index([companyName])
+  @@index([ownerId])
+  @@index([parentCompanyId])
 }
 
 model Contact {
-  id        String    @id @default(cuid())
-  companyId String
-  fullName  String
-  email     String?
-  phone     String?
-  department String?
-  title     String?
-  isPrimary Boolean   @default(false)
-  memo      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id           String    @id @default(cuid())
+  companyId    String
+  firstName    String?
+  lastName     String?
+  fullName     String
+  email        String?
+  phone        String?
+  mobilePhone  String?
+  department   String?
+  title        String?
+  roleInDecision String?
+  isPrimary    Boolean   @default(false)
+  leadSource   String?
+  ownerId      String?
+  crmLifecycleStage String?
+  lastActivityAt DateTime?
+  prospectId   String?   @unique
+  memo         String?
+  customFields Json      @default("{}")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
-  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  deals      Deal[]
-  activities Activity[]
+  company              Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  prospect             Prospect?                @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  deals                Deal[]
+  activities           Activity[]
+  opportunityRoles     OpportunityContactRole[]
+  campaignMembers      CampaignMember[]
+  cases                Case[]
+  activityRelations    ActivityRelation[]
 
   @@index([companyId])
   @@index([email])
   @@index([deletedAt])
+  @@index([ownerId])
+  @@index([prospectId])
 }
 
 model Deal {
@@ -256,26 +304,46 @@ model Deal {
   contactId         String?
   dealName          String
   stage             String    @default("lead")
+  forecastCategory  String    @default("PIPELINE")
+  type              String    @default("NEW_BUSINESS")
+  leadSource        String?
   amount            Float     @default(0)
   probability       Int       @default(0)
   expectedCloseDate DateTime?
+  closeDate         DateTime?
   nextAction        String?
+  nextStep          String?
   memo              String?
   lostReason        String?
+  ownerId           String?
+  primaryContactId  String?
+  campaignId        String?
+  customFields      Json      @default("{}")
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   deletedAt         DateTime?
 
-  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  contact    Contact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  activities Activity[]
-  tasks      Task[]
-  tags       DealTag[]
+  company              Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact              Contact?                 @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  campaign             Campaign?                @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  activities           Activity[]
+  tasks                Task[]
+  tags                 DealTag[]
+  contactRoles         OpportunityContactRole[]
+  stageHistory         OpportunityStageHistory[]
+  lineItems            OpportunityLineItem[]
+  quotes               Quote[]
+  contracts            Contract[]
+  orders               Order[]
+  campaignInfluences   CampaignInfluence[]
+  activityRelations    ActivityRelation[]
 
   @@index([companyId])
   @@index([stage])
   @@index([expectedCloseDate])
   @@index([deletedAt])
+  @@index([ownerId])
+  @@index([campaignId])
 }
 
 model Activity {
@@ -283,6 +351,8 @@ model Activity {
   companyId    String?
   contactId    String?
   dealId       String?
+  leadId       String?
+  caseId       String?
   createdById  String?
   type         String   @default("note")
   subject      String
@@ -291,19 +361,47 @@ model Activity {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  company  Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact  Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal     Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  case     Case?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  relations ActivityRelation[]
 
   @@index([companyId])
   @@index([dealId])
+  @@index([leadId])
+  @@index([caseId])
   @@index([activityDate])
+}
+
+model ActivityRelation {
+  id           String   @id @default(cuid())
+  activityId   String
+  objectType   String
+  objectId     String
+  relationType String   @default("RELATED")
+  contactId    String?
+  dealId       String?
+  createdAt    DateTime @default(now())
+
+  leadId       String?
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  lead     Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([activityId])
+  @@index([objectType, objectId])
 }
 
 model Task {
   id          String    @id @default(cuid())
   companyId   String?
   dealId      String?
+  leadId      String?
+  caseId      String?
   assigneeId  String?
   title       String
   description String?
@@ -315,11 +413,404 @@ model Task {
 
   company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  lead    Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  case    Case?    @relation(fields: [caseId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([dueDate])
   @@index([dealId])
+  @@index([leadId])
+  @@index([assigneeId])
 }
+
+// ===================== CRM Standard Objects (New) =====================
+
+model Lead {
+  id                    String    @id @default(cuid())
+  firstName             String?
+  lastName              String?
+  fullName              String
+  email                 String?
+  phone                 String?
+  mobilePhone           String?
+  companyName           String?
+  title                 String?
+  industry              String?
+  website               String?
+  source                String?
+  status                String    @default("NEW")
+  rating                String    @default("COLD")
+  score                 Int?
+  grade                 String?
+  ownerId               String?
+  companyId             String?
+  prospectId            String?   @unique
+  convertedAccountId    String?
+  convertedContactId    String?
+  convertedDealId       String?
+  convertedAt           DateTime?
+  disqualifiedReason    String?
+  customFields          Json      @default("{}")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  company             Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  prospect            Prospect?        @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  activities          Activity[]
+  tasks               Task[]
+  campaignMembers     CampaignMember[]
+  activityRelations   ActivityRelation[]
+
+  @@index([email])
+  @@index([status])
+  @@index([ownerId])
+  @@index([companyId])
+  @@index([prospectId])
+  @@index([deletedAt])
+}
+
+model OpportunityContactRole {
+  id            String   @id @default(cuid())
+  dealId        String
+  contactId     String
+  role          String   @default("OTHER")
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  deal    Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([dealId, contactId])
+  @@index([dealId])
+  @@index([contactId])
+}
+
+model OpportunityStageHistory {
+  id              String   @id @default(cuid())
+  dealId          String
+  oldStage        String?
+  newStage        String
+  oldAmount       Float?
+  newAmount       Float?
+  oldProbability  Int?
+  newProbability  Int?
+  changedById     String?
+  changedAt       DateTime @default(now())
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@index([changedAt])
+}
+
+model Campaign {
+  id              String    @id @default(cuid())
+  name            String
+  type            String    @default("OTHER")
+  status          String    @default("PLANNED")
+  startDate       DateTime?
+  endDate         DateTime?
+  budget          Float?
+  actualCost      Float?
+  expectedRevenue Float?
+  ownerId         String?
+  parentCampaignId String?
+  description     String?
+  isActive        Boolean   @default(true)
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  parentCampaign  Campaign?          @relation("CampaignHierarchy", fields: [parentCampaignId], references: [id], onDelete: SetNull)
+  childCampaigns  Campaign[]         @relation("CampaignHierarchy")
+  members         CampaignMember[]
+  influences      CampaignInfluence[]
+  deals           Deal[]
+  marketingEmails MarketingEmail[]
+  marketingForms  MarketingForm[]
+  landingPages    LandingPage[]
+  engagementPrograms EngagementProgram[]
+
+  @@index([status])
+  @@index([ownerId])
+  @@index([parentCampaignId])
+  @@index([deletedAt])
+}
+
+model CampaignMember {
+  id               String    @id @default(cuid())
+  campaignId       String
+  leadId           String?
+  contactId        String?
+  prospectId       String?
+  companyId        String?
+  status           String    @default("SENT")
+  responded        Boolean   @default(false)
+  firstRespondedAt DateTime?
+  score            Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  contact   Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  prospect  Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([leadId])
+  @@index([contactId])
+  @@index([prospectId])
+}
+
+model CampaignInfluence {
+  id             String   @id @default(cuid())
+  campaignId     String
+  dealId         String
+  contactId      String?
+  influenceType  String   @default("MULTI_TOUCH")
+  revenueShare   Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  deal     Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, dealId])
+  @@index([campaignId])
+  @@index([dealId])
+}
+
+model Product {
+  id           String    @id @default(cuid())
+  name         String
+  productCode  String?   @unique
+  description  String?
+  family       String?
+  isActive     Boolean   @default(true)
+  customFields Json      @default("{}")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  priceBookEntries  PriceBookEntry[]
+  lineItems         OpportunityLineItem[]
+  quoteLineItems    QuoteLineItem[]
+  orderItems        OrderItem[]
+  subscriptions     Subscription[]
+
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model PriceBook {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  isStandard  Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  entries PriceBookEntry[]
+
+  @@index([isActive])
+}
+
+model PriceBookEntry {
+  id          String    @id @default(cuid())
+  priceBookId String
+  productId   String
+  unitPrice   Float
+  currency    String    @default("JPY")
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  priceBook  PriceBook            @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  product    Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lineItems  OpportunityLineItem[]
+
+  @@unique([priceBookId, productId])
+  @@index([priceBookId])
+  @@index([productId])
+}
+
+model OpportunityLineItem {
+  id                String   @id @default(cuid())
+  dealId            String
+  priceBookEntryId  String?
+  productId         String
+  quantity          Float    @default(1)
+  unitPrice         Float
+  discountPercent   Float    @default(0)
+  totalPrice        Float
+  description       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  deal           Deal            @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  priceBookEntry PriceBookEntry? @relation(fields: [priceBookEntryId], references: [id], onDelete: SetNull)
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([dealId])
+  @@index([productId])
+}
+
+model Quote {
+  id            String    @id @default(cuid())
+  dealId        String
+  companyId     String?
+  name          String
+  quoteNumber   String    @unique
+  status        String    @default("DRAFT")
+  validUntil    DateTime?
+  subtotal      Float     @default(0)
+  discountTotal Float     @default(0)
+  taxTotal      Float     @default(0)
+  grandTotal    Float     @default(0)
+  ownerId       String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  deal      Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  lineItems QuoteLineItem[]
+  contracts Contract[]
+  orders    Order[]
+
+  @@index([dealId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model QuoteLineItem {
+  id              String   @id @default(cuid())
+  quoteId         String
+  productId       String?
+  description     String?
+  quantity        Float    @default(1)
+  unitPrice       Float
+  discountPercent Float    @default(0)
+  totalPrice      Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  quote   Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([quoteId])
+}
+
+model Contract {
+  id              String    @id @default(cuid())
+  companyId       String
+  dealId          String?
+  quoteId         String?
+  name            String
+  contractNumber  String    @unique
+  status          String    @default("DRAFT")
+  startDate       DateTime
+  endDate         DateTime?
+  contractValue   Float     @default(0)
+  ownerId         String?
+  customFields    Json      @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  deal          Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  quote         Quote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  orders        Order[]
+  subscriptions Subscription[]
+
+  @@index([companyId])
+  @@index([dealId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Order {
+  id          String    @id @default(cuid())
+  companyId   String
+  dealId      String?
+  quoteId     String?
+  contractId  String?
+  orderNumber String    @unique
+  status      String    @default("DRAFT")
+  orderDate   DateTime  @default(now())
+  totalAmount Float     @default(0)
+  ownerId     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  company  Company    @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  deal     Deal?      @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  quote    Quote?     @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  contract Contract?  @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  productId  String?
+  quantity   Float    @default(1)
+  unitPrice  Float
+  totalPrice Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model Case {
+  id           String    @id @default(cuid())
+  caseNumber   String    @unique @default(cuid())
+  companyId    String?
+  contactId    String?
+  subject      String
+  description  String?
+  status       String    @default("New")
+  priority     String    @default("Medium")
+  origin       String?
+  type         String?
+  ownerId      String?
+  closedAt     DateTime?
+  resolvedAt   DateTime?
+  resolution   String?
+  customFields Json      @default("{}")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  company    Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact    Contact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  activities Activity[]
+  tasks      Task[]
+
+  @@index([companyId])
+  @@index([contactId])
+  @@index([status])
+  @@index([priority])
+  @@index([deletedAt])
+}
+
+// ===================== Analytics =====================
 
 model Report {
   id          String    @id @default(cuid())
@@ -402,6 +893,8 @@ model SavedView {
   @@index([objectType])
   @@index([userId])
 }
+
+// ===================== Operations =====================
 
 model ImportJob {
   id           String    @id @default(cuid())
@@ -494,63 +987,69 @@ model DealTag {
 // ===================== Marketing Automation =====================
 
 model Prospect {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  firstName       String?
-  lastName        String?
-  company         String?
-  jobTitle        String?
-  phone           String?
-  website         String?
-  industry        String?
-  employeeSize    String?
-  annualRevenue   Float?
-  country         String?
-  state           String?
-  city            String?
-  postalCode      String?
-  source          String?   // web, import, manual, api
-  score           Int       @default(0)
-  grade           String    @default("D")
-  status          String    @default("active") // active, paused, deleted, blacklisted
-  doNotEmail      Boolean   @default(false)
-  optedOut        Boolean   @default(false)
-  optedOutAt      DateTime?
-  emailBounced    Boolean   @default(false)
-  emailBouncedAt  DateTime?
-  spamComplaint   Boolean   @default(false)
-  isConverted     Boolean   @default(false)
-  convertedAt     DateTime?
-  crmContactId    String?
-  assignedUserId  String?
-  lastActivityAt  DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id             String    @id @default(cuid())
+  email          String    @unique
+  firstName      String?
+  lastName       String?
+  companyName    String?
+  jobTitle       String?
+  phone          String?
+  website        String?
+  industry       String?
+  employeeSize   String?
+  annualRevenue  Float?
+  country        String?
+  state          String?
+  city           String?
+  postalCode     String?
+  source         String?
+  score          Int       @default(0)
+  grade          String    @default("D")
+  status         String    @default("active")
+  doNotEmail     Boolean   @default(false)
+  optedOut       Boolean   @default(false)
+  optedOutAt     DateTime?
+  emailBounced   Boolean   @default(false)
+  emailBouncedAt DateTime?
+  spamComplaint  Boolean   @default(false)
+  isConverted    Boolean   @default(false)
+  convertedAt    DateTime?
+  crmContactId   String?
+  companyId      String?
+  assignedUserId String?
+  lastActivityAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
-  activities       ProspectActivity[]
-  listMemberships  MarketingListMembership[]
-  emailRecipients  EmailRecipient[]
-  formSubmissions  FormSubmission[]
-  visits           Visit[]
+  company            Company?                  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  crmContact         Contact?
+  crmLead            Lead?
+  activities         ProspectActivity[]
+  listMemberships    MarketingListMembership[]
+  emailRecipients    EmailRecipient[]
+  formSubmissions    FormSubmission[]
+  visits             Visit[]
   programEnrollments ProgramEnrollment[]
+  campaignMembers    CampaignMember[]
 
   @@index([email])
   @@index([status])
   @@index([score])
   @@index([assignedUserId])
+  @@index([companyId])
   @@index([deletedAt])
   @@index([createdAt])
 }
 
 model ProspectActivity {
-  id          String   @id @default(cuid())
-  prospectId  String
-  type        String   // email_open, email_click, form_submit, page_view, email_send, score_change, status_change
+  id         String   @id @default(cuid())
+  prospectId String
+  type       String
   description String
-  metadata    Json     @default("{}")
-  score       Int      @default(0)
-  createdAt   DateTime @default(now())
+  metadata   Json     @default("{}")
+  score      Int      @default(0)
+  createdAt  DateTime @default(now())
 
   prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
 
@@ -571,7 +1070,7 @@ model Visitor {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  visits    Visit[]
+  visits Visit[]
 
   @@index([prospectId])
   @@index([visitorUid])
@@ -579,18 +1078,18 @@ model Visitor {
 }
 
 model Visit {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   visitorId  String
   prospectId String?
-  startedAt  DateTime @default(now())
+  startedAt  DateTime  @default(now())
   endedAt    DateTime?
-  duration   Int?     // seconds
-  pageCount  Int      @default(1)
+  duration   Int?
+  pageCount  Int       @default(1)
   referrer   String?
   campaign   String?
   medium     String?
   source     String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   visitor   Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
   prospect  Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
@@ -602,12 +1101,12 @@ model Visit {
 }
 
 model PageView {
-  id        String   @id @default(cuid())
-  visitId   String
-  url       String
-  title     String?
-  duration  Int?     // seconds
-  viewedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  visitId  String
+  url      String
+  title    String?
+  duration Int?
+  viewedAt DateTime @default(now())
 
   visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
 
@@ -620,7 +1119,7 @@ model MarketingList {
   id          String    @id @default(cuid())
   name        String
   description String?
-  type        String    @default("static") // static, dynamic
+  type        String    @default("static")
   rules       Json      @default("[]")
   isPublic    Boolean   @default(false)
   createdById String?
@@ -639,7 +1138,7 @@ model MarketingListMembership {
   listId     String
   prospectId String
   addedAt    DateTime @default(now())
-  addedBy    String?  // manual, automation, import
+  addedBy    String?
 
   list     MarketingList @relation(fields: [listId], references: [id], onDelete: Cascade)
   prospect Prospect      @relation(fields: [prospectId], references: [id], onDelete: Cascade)
@@ -659,7 +1158,7 @@ model EmailTemplate {
   fromName    String?
   fromEmail   String?
   replyTo     String?
-  type        String    @default("regular") // regular, drip, test
+  type        String    @default("regular")
   createdById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -677,12 +1176,13 @@ model MarketingEmail {
   subject      String
   templateId   String?
   listId       String?
+  campaignId   String?
   fromName     String
   fromEmail    String
   replyTo      String?
   bodyHtml     String
   bodyText     String?
-  status       String    @default("draft") // draft, scheduled, sending, sent, paused
+  status       String    @default("draft")
   scheduledAt  DateTime?
   sentAt       DateTime?
   totalSent    Int       @default(0)
@@ -697,10 +1197,12 @@ model MarketingEmail {
 
   template   EmailTemplate?  @relation(fields: [templateId], references: [id])
   list       MarketingList?  @relation(fields: [listId], references: [id])
+  campaign   Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   recipients EmailRecipient[]
 
   @@index([status])
   @@index([scheduledAt])
+  @@index([campaignId])
   @@index([deletedAt])
 }
 
@@ -708,7 +1210,7 @@ model EmailRecipient {
   id         String    @id @default(cuid())
   emailId    String
   prospectId String
-  status     String    @default("pending") // pending, sent, opened, clicked, bounced, opted_out
+  status     String    @default("pending")
   sentAt     DateTime?
   openedAt   DateTime?
   clickedAt  DateTime?
@@ -735,15 +1237,18 @@ model MarketingForm {
   thankYouMsg String?
   redirectUrl String?
   isActive    Boolean   @default(true)
+  campaignId  String?
   createdById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
+  campaign    Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   submissions FormSubmission[]
   handlers    FormHandler[]
 
   @@index([isActive])
+  @@index([campaignId])
   @@index([deletedAt])
 }
 
@@ -790,16 +1295,20 @@ model LandingPage {
   bodyHtml    String    @default("")
   metaTitle   String?
   metaDesc    String?
-  status      String    @default("draft") // draft, published, archived
+  status      String    @default("draft")
   publishedAt DateTime?
   views       Int       @default(0)
+  campaignId  String?
   createdById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
   @@index([status])
   @@index([slug])
+  @@index([campaignId])
   @@index([deletedAt])
 }
 
@@ -807,32 +1316,35 @@ model EngagementProgram {
   id          String    @id @default(cuid())
   name        String
   description String?
-  status      String    @default("draft") // draft, active, paused, completed
+  status      String    @default("draft")
   startDate   DateTime?
   endDate     DateTime?
+  campaignId  String?
   createdById String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
+  campaign    Campaign?              @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   nodes       EngagementProgramNode[]
   enrollments ProgramEnrollment[]
 
   @@index([status])
+  @@index([campaignId])
   @@index([deletedAt])
 }
 
 model EngagementProgramNode {
-  id          String  @id @default(cuid())
-  programId   String
-  type        String  // email, wait, condition, action
-  label       String
-  config      Json    @default("{}")
-  positionX   Float   @default(0)
-  positionY   Float   @default(0)
-  nextNodeId  String?
-  yesNodeId   String?
-  noNodeId    String?
+  id        String @id @default(cuid())
+  programId String
+  type      String
+  label     String
+  config    Json   @default("{}")
+  positionX Float  @default(0)
+  positionY Float  @default(0)
+  nextNodeId String?
+  yesNodeId  String?
+  noNodeId   String?
 
   program EngagementProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
 
@@ -843,7 +1355,7 @@ model ProgramEnrollment {
   id          String    @id @default(cuid())
   programId   String
   prospectId  String
-  status      String    @default("active") // active, paused, completed, removed
+  status      String    @default("active")
   currentNode String?
   enrolledAt  DateTime  @default(now())
   completedAt DateTime?
@@ -862,7 +1374,7 @@ model AutomationRule {
   id          String    @id @default(cuid())
   name        String
   description String?
-  triggerType String    // prospect_created, form_submit, email_open, email_click, score_change, field_change, date_based
+  triggerType String
   triggerConf Json      @default("{}")
   conditions  Json      @default("[]")
   actions     Json      @default("[]")
@@ -880,15 +1392,15 @@ model AutomationRule {
 }
 
 model ScoringRule {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  category    String    @default("behavior") // behavior, demographic
-  triggerType String    // email_open, email_click, form_submit, page_view, etc.
-  conditions  Json      @default("[]")
+  category    String   @default("behavior")
+  triggerType String
+  conditions  Json     @default("[]")
   scoreChange Int
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([category])
   @@index([isActive])
@@ -902,4 +1414,235 @@ model GradingProfile {
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ===================== Custom Object Metadata =====================
+
+model ObjectDefinition {
+  id                 String    @id @default(cuid())
+  apiName            String    @unique
+  label              String
+  pluralLabel        String
+  description        String?
+  objectType         String    @default("CUSTOM")
+  category           String    @default("CUSTOM")
+  icon               String?
+  isActive           Boolean   @default(true)
+  isSearchable       Boolean   @default(true)
+  isReportable       Boolean   @default(true)
+  isAuditable        Boolean   @default(true)
+  enableActivities   Boolean   @default(true)
+  enableNotes        Boolean   @default(true)
+  enableFiles        Boolean   @default(false)
+  enableSharing      Boolean   @default(false)
+  enableHistory      Boolean   @default(true)
+  enableCustomFields Boolean   @default(true)
+  nameFieldType      String    @default("TEXT")
+  nameFieldLabel     String    @default("名前")
+  nameFieldApiName   String    @default("Name")
+  autoNumberFormat   String?
+  ownerId            String?
+  createdById        String?
+  updatedById        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  fields         FieldDefinition[]
+  records        CustomObjectRecord[]
+  layouts        PageLayoutDefinition[]
+  listViews      ListViewDefinition[]
+  recordTypes    RecordTypeDefinition[]
+  validationRules ValidationRuleDefinition[]
+  customTabs     CustomTabDefinition[]
+
+  @@index([apiName])
+  @@index([objectType])
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model FieldDefinition {
+  id                     String    @id @default(cuid())
+  objectDefinitionId     String
+  apiName                String
+  label                  String
+  description            String?
+  fieldType              String    @default("TEXT")
+  isRequired             Boolean   @default(false)
+  isUnique               Boolean   @default(false)
+  isIndexed              Boolean   @default(false)
+  isReadonly             Boolean   @default(false)
+  isSystem               Boolean   @default(false)
+  defaultValue           String?
+  helpText               String?
+  placeholder            String?
+  options                Json?
+  referenceObjectApiName String?
+  referenceLabelField    String?
+  relationshipName       String?
+  precision              Int?
+  scale                  Int?
+  maxLength              Int?
+  formulaExpression      String?
+  sortOrder              Int       @default(0)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  deletedAt              DateTime?
+
+  objectDefinition ObjectDefinition         @relation(fields: [objectDefinitionId], references: [id], onDelete: Cascade)
+  lookupValues     CustomObjectLookupValue[]
+
+  @@unique([objectDefinitionId, apiName])
+  @@index([objectDefinitionId])
+  @@index([fieldType])
+  @@index([deletedAt])
+}
+
+model CustomObjectRecord {
+  id               String    @id @default(cuid())
+  objectDefinitionId String
+  name             String
+  values           Json      @default("{}")
+  ownerId          String?
+  createdById      String?
+  updatedById      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  objectDefinition ObjectDefinition          @relation(fields: [objectDefinitionId], references: [id], onDelete: Cascade)
+  lookupValues     CustomObjectLookupValue[]
+
+  @@index([objectDefinitionId])
+  @@index([name])
+  @@index([ownerId])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model CustomObjectLookupValue {
+  id                  String   @id @default(cuid())
+  recordId            String
+  fieldDefinitionId   String
+  targetObjectApiName String
+  targetRecordId      String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  record          CustomObjectRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  fieldDefinition FieldDefinition    @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
+  @@index([fieldDefinitionId])
+  @@index([targetObjectApiName])
+  @@index([targetRecordId])
+}
+
+model PageLayoutDefinition {
+  id               String   @id @default(cuid())
+  objectDefinitionId String
+  name             String
+  description      String?
+  layout           Json     @default("{}")
+  isDefault        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  objectDefinition ObjectDefinition @relation(fields: [objectDefinitionId], references: [id], onDelete: Cascade)
+
+  @@index([objectDefinitionId])
+}
+
+model ListViewDefinition {
+  id               String   @id @default(cuid())
+  objectDefinitionId String
+  name             String
+  visibility       String   @default("PRIVATE")
+  columns          Json     @default("[]")
+  filters          Json     @default("[]")
+  sort             Json     @default("{}")
+  ownerId          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  objectDefinition ObjectDefinition @relation(fields: [objectDefinitionId], references: [id], onDelete: Cascade)
+
+  @@index([objectDefinitionId])
+  @@index([ownerId])
+}
+
+model RecordTypeDefinition {
+  id               String   @id @default(cuid())
+  objectDefinitionId String
+  name             String
+  label            String
+  description      String?
+  isActive         Boolean  @default(true)
+  picklistValues   Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  objectDefinition ObjectDefinition @relation(fields: [objectDefinitionId], references: [id], onDelete: Cascade)
+
+  @@index([objectDefinitionId])
+}
+
+model ValidationRuleDefinition {
+  id               String   @id @default(cuid())
+  objectDefinitionId String
+  name             String
+  description      String?
+  expression       String
+  errorMessage     String
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  objectDefinition ObjectDefinition @relation(fields: [objectDefinitionId], references: [id], onDelete: Cascade)
+
+  @@index([objectDefinitionId])
+}
+
+model CustomTabDefinition {
+  id               String   @id @default(cuid())
+  objectDefinitionId String
+  appId            String
+  label            String
+  icon             String?
+  sortOrder        Int      @default(0)
+  isVisible        Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  objectDefinition ObjectDefinition @relation(fields: [objectDefinitionId], references: [id], onDelete: Cascade)
+
+  @@index([objectDefinitionId])
+  @@index([appId])
+}
+
+// ===================== Custom Objects (Seed Examples) =====================
+
+model Subscription {
+  id            String    @id @default(cuid())
+  companyId     String?
+  contractId    String?
+  productId     String?
+  startDate     DateTime?
+  renewalDate   DateTime?
+  arr           Float?
+  status        String    @default("有効")
+  customFields  Json      @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  company  Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([renewalDate])
+  @@index([deletedAt])
 }

@@ -57,6 +57,25 @@ async function main() {
   await prisma.securitySettings.deleteMany();
   await prisma.orgSettings.deleteMany();
 
+  // New standard objects cleanup
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.quoteLineItem.deleteMany();
+  await prisma.quote.deleteMany();
+  await prisma.subscription.deleteMany();
+  await prisma.contract.deleteMany();
+  await prisma.opportunityLineItem.deleteMany();
+  await prisma.priceBookEntry.deleteMany();
+  await prisma.priceBook.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.campaignInfluence.deleteMany();
+  await prisma.campaignMember.deleteMany();
+  await prisma.campaign.deleteMany();
+  await prisma.activityRelation.deleteMany();
+  await prisma.opportunityContactRole.deleteMany();
+  await prisma.case.deleteMany();
+  await prisma.lead.deleteMany();
+
   // Profiles
   const [adminProfile, managerProfile, salesProfile] = await Promise.all([
     prisma.profile.create({
@@ -998,21 +1017,21 @@ async function main() {
 
   // Prospects
   const prospectData = [
-    { email: "tanaka.kenji@techcorp.co.jp", firstName: "健二", lastName: "田中", company: "テクノロジー株式会社", jobTitle: "CTO", score: 85, grade: "A", source: "web" },
-    { email: "yamada.haruki@startup.io", firstName: "春樹", lastName: "山田", company: "スタートアップ合同会社", jobTitle: "CEO", score: 120, grade: "A+", source: "web" },
-    { email: "suzuki.yuki@enterprise.jp", firstName: "由紀", lastName: "鈴木", company: "エンタープライズ商事", jobTitle: "購買部長", score: 45, grade: "B", source: "import" },
-    { email: "ito.masato@manufacturing.co.jp", firstName: "雅人", lastName: "伊藤", company: "製造業株式会社", jobTitle: "IT部長", score: 30, grade: "C", source: "manual" },
-    { email: "watanabe.akiko@consulting.jp", firstName: "明子", lastName: "渡辺", company: "コンサルティング会社", jobTitle: "マネージャー", score: 65, grade: "B", source: "web" },
-    { email: "kobayashi.ryo@fintech.co.jp", firstName: "涼", lastName: "小林", company: "フィンテック株式会社", jobTitle: "CFO", score: 95, grade: "A", source: "web" },
-    { email: "nakamura.sota@ecommerce.jp", firstName: "蒼太", lastName: "中村", company: "Eコマース会社", jobTitle: "マーケティング部長", score: 55, grade: "B", source: "import" },
-    { email: "kato.misa@retail.co.jp", firstName: "美沙", lastName: "加藤", company: "リテール株式会社", jobTitle: "店長", score: 20, grade: "D", source: "web" },
-    { email: "yoshida.takumi@saas.io", firstName: "匠", lastName: "吉田", company: "SaaS企業", jobTitle: "VP Sales", score: 150, grade: "A+", source: "web" },
-    { email: "hayashi.nana@healthcare.jp", firstName: "奈々", lastName: "林", company: "ヘルスケア株式会社", jobTitle: "人事部長", score: 10, grade: "D", source: "manual" },
-    { email: "kimura.taro@logistics.co.jp", firstName: "太郎", lastName: "木村", company: "物流株式会社", jobTitle: "部長", score: 40, grade: "C", source: "web" },
-    { email: "shimizu.hanako@education.jp", firstName: "花子", lastName: "清水", company: "教育機関", jobTitle: "理事長", score: 75, grade: "B", source: "import" },
-    { email: "inoue.ken@media.co.jp", firstName: "健", lastName: "井上", company: "メディア会社", jobTitle: "編集長", score: 60, grade: "B", source: "web" },
-    { email: "sasaki.yumi@tourism.jp", firstName: "由美", lastName: "佐々木", company: "観光業", jobTitle: "代表取締役", score: 35, grade: "C", source: "web" },
-    { email: "yamaguchi.daisuke@auto.co.jp", firstName: "大輔", lastName: "山口", company: "自動車メーカー", jobTitle: "調達担当", score: 80, grade: "A", source: "import" },
+    { email: "tanaka.kenji@techcorp.co.jp", firstName: "健二", lastName: "田中", companyName: "テクノロジー株式会社", jobTitle: "CTO", score: 85, grade: "A", source: "web" },
+    { email: "yamada.haruki@startup.io", firstName: "春樹", lastName: "山田", companyName: "スタートアップ合同会社", jobTitle: "CEO", score: 120, grade: "A+", source: "web" },
+    { email: "suzuki.yuki@enterprise.jp", firstName: "由紀", lastName: "鈴木", companyName: "エンタープライズ商事", jobTitle: "購買部長", score: 45, grade: "B", source: "import" },
+    { email: "ito.masato@manufacturing.co.jp", firstName: "雅人", lastName: "伊藤", companyName: "製造業株式会社", jobTitle: "IT部長", score: 30, grade: "C", source: "manual" },
+    { email: "watanabe.akiko@consulting.jp", firstName: "明子", lastName: "渡辺", companyName: "コンサルティング会社", jobTitle: "マネージャー", score: 65, grade: "B", source: "web" },
+    { email: "kobayashi.ryo@fintech.co.jp", firstName: "涼", lastName: "小林", companyName: "フィンテック株式会社", jobTitle: "CFO", score: 95, grade: "A", source: "web" },
+    { email: "nakamura.sota@ecommerce.jp", firstName: "蒼太", lastName: "中村", companyName: "Eコマース会社", jobTitle: "マーケティング部長", score: 55, grade: "B", source: "import" },
+    { email: "kato.misa@retail.co.jp", firstName: "美沙", lastName: "加藤", companyName: "リテール株式会社", jobTitle: "店長", score: 20, grade: "D", source: "web" },
+    { email: "yoshida.takumi@saas.io", firstName: "匠", lastName: "吉田", companyName: "SaaS企業", jobTitle: "VP Sales", score: 150, grade: "A+", source: "web" },
+    { email: "hayashi.nana@healthcare.jp", firstName: "奈々", lastName: "林", companyName: "ヘルスケア株式会社", jobTitle: "人事部長", score: 10, grade: "D", source: "manual" },
+    { email: "kimura.taro@logistics.co.jp", firstName: "太郎", lastName: "木村", companyName: "物流株式会社", jobTitle: "部長", score: 40, grade: "C", source: "web" },
+    { email: "shimizu.hanako@education.jp", firstName: "花子", lastName: "清水", companyName: "教育機関", jobTitle: "理事長", score: 75, grade: "B", source: "import" },
+    { email: "inoue.ken@media.co.jp", firstName: "健", lastName: "井上", companyName: "メディア会社", jobTitle: "編集長", score: 60, grade: "B", source: "web" },
+    { email: "sasaki.yumi@tourism.jp", firstName: "由美", lastName: "佐々木", companyName: "観光業", jobTitle: "代表取締役", score: 35, grade: "C", source: "web" },
+    { email: "yamaguchi.daisuke@auto.co.jp", firstName: "大輔", lastName: "山口", companyName: "自動車メーカー", jobTitle: "調達担当", score: 80, grade: "A", source: "import" },
   ];
 
   const prospects = await Promise.all(
@@ -1196,6 +1215,143 @@ async function main() {
       },
     }),
   ]);
+
+  // ===================== New Standard Objects Seed =====================
+
+  // Leads (120 records)
+  const leadStatuses = ["NEW", "WORKING", "NURTURING", "CONVERTED", "DISQUALIFIED"];
+  const leadRatings = ["HOT", "WARM", "COLD"];
+  const leadSources = ["Web", "Email", "Phone", "Event", "Partner", "Referral", "SNS"];
+  const industries = ["IT", "製造", "金融", "小売", "医療", "教育", "不動産", "物流", "サービス", "建設"];
+  const firstNames = ["太郎", "花子", "一郎", "愛", "健太", "さくら", "翔", "美咲", "大輔", "由美"];
+  const lastNames = ["田中", "鈴木", "佐藤", "高橋", "山本", "伊藤", "渡辺", "加藤", "吉田", "山田", "中村", "小林"];
+
+  const seedLeads = [];
+  for (let i = 0; i < 120; i++) {
+    const fn = firstNames[i % firstNames.length];
+    const ln = lastNames[i % lastNames.length];
+    const status = leadStatuses[i % leadStatuses.length];
+    seedLeads.push(
+      prisma.lead.create({
+        data: {
+          firstName: fn,
+          lastName: ln,
+          fullName: `${ln} ${fn}`,
+          email: `lead${i + 1}@example${(i % 10) + 1}.com`,
+          phone: `03-${String(i + 1000).padStart(4, "0")}-${String(i * 7 % 9999).padStart(4, "0")}`,
+          companyName: `株式会社サンプル${i + 1}`,
+          title: ["部長", "課長", "主任", "担当", "マネージャー", "ディレクター"][i % 6],
+          industry: industries[i % industries.length],
+          source: leadSources[i % leadSources.length],
+          status,
+          rating: leadRatings[i % leadRatings.length],
+          score: Math.floor(Math.random() * 100),
+          ownerId: adminUser.id,
+        },
+      })
+    );
+  }
+  await Promise.all(seedLeads);
+
+  // Campaigns (20 records)
+  const campaignTypes = ["Email", "Event", "Webinar", "Content", "SNS", "Paid"];
+  const campaignStatuses = ["Planning", "Active", "Completed", "Aborted"];
+  const seedCampaigns = [];
+  for (let i = 0; i < 20; i++) {
+    const startDate = new Date(2026, (i % 12), 1);
+    const endDate = new Date(2026, (i % 12), 28);
+    seedCampaigns.push(
+      prisma.campaign.create({
+        data: {
+          name: `${["春の大商談フェア", "製品ローンチキャンペーン", "ウェビナーシリーズ", "パートナー紹介プログラム", "SNSキャンペーン"][i % 5]} ${2026 - Math.floor(i / 5)}Q${(i % 4) + 1}`,
+          type: campaignTypes[i % campaignTypes.length],
+          status: campaignStatuses[i % campaignStatuses.length],
+          description: `${campaignTypes[i % campaignTypes.length]}を活用した見込み客獲得施策`,
+          startDate,
+          endDate,
+          budget: (i + 1) * 500000,
+          actualCost: i < 10 ? (i + 1) * 350000 : null,
+          isActive: i % campaignStatuses.length === 1,
+          ownerId: adminUser.id,
+        },
+      })
+    );
+  }
+  await Promise.all(seedCampaigns);
+
+  // Products (30 records) + Standard PriceBook
+  const productFamilies = ["クラウド", "オンプレ", "サービス", "ライセンス", "サポート"];
+  const createdProducts = [];
+  for (let i = 0; i < 30; i++) {
+    createdProducts.push(
+      await prisma.product.create({
+        data: {
+          name: `${["CRMプラン", "MAプラン", "分析プラン", "エンタープライズ", "スタータープラン"][i % 5]} ${["ベーシック", "スタンダード", "プレミアム", "エンタープライズ", "カスタム"][Math.floor(i / 5) % 5]}`,
+          productCode: `PROD-${String(i + 1).padStart(4, "0")}`,
+          family: productFamilies[i % productFamilies.length],
+          description: `${productFamilies[i % productFamilies.length]}向け製品・サービス`,
+          isActive: i < 25,
+        },
+      })
+    );
+  }
+
+  const standardPB = await prisma.priceBook.create({
+    data: { name: "標準価格表", isStandard: true, isActive: true },
+  });
+  const premiumPB = await prisma.priceBook.create({
+    data: { name: "プレミアム価格表", isStandard: false, isActive: true },
+  });
+
+  for (let i = 0; i < createdProducts.length; i++) {
+    await prisma.priceBookEntry.create({
+      data: {
+        priceBookId: standardPB.id,
+        productId: createdProducts[i].id,
+        unitPrice: (i + 1) * 50000,
+        isActive: i < 25,
+      },
+    });
+    if (i < 15) {
+      await prisma.priceBookEntry.create({
+        data: {
+          priceBookId: premiumPB.id,
+          productId: createdProducts[i].id,
+          unitPrice: (i + 1) * 70000,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  // Cases (80 records) — link to existing companies
+  const caseSubjects = [
+    "ログインできない", "データが同期しない", "レポートが表示されない",
+    "インポートエラーが発生する", "メール送信が失敗する", "APIが応答しない",
+    "パフォーマンスが遅い", "設定変更が反映されない",
+  ];
+  const caseStatuses = ["New", "Open", "Pending Customer", "Closed"];
+  const casePriorities = ["Critical", "High", "Medium", "Low"];
+  const caseTypes = ["Question", "Bug", "Feature Request", "Other"];
+
+  const caseCompanies = await prisma.company.findMany({ take: 20 });
+  for (let i = 0; i < 80; i++) {
+    const company = caseCompanies[i % caseCompanies.length];
+    await prisma.case.create({
+      data: {
+        subject: `${caseSubjects[i % caseSubjects.length]} (${i + 1})`,
+        description: "詳細な説明文がここに入ります。再現手順を記載してください。",
+        status: caseStatuses[i % caseStatuses.length],
+        priority: casePriorities[i % casePriorities.length],
+        type: caseTypes[i % caseTypes.length],
+        origin: ["Email", "Phone", "Web", "Chat"][i % 4],
+        companyId: company.id,
+        ownerId: adminUser.id,
+        resolvedAt: i % 4 === 3 ? new Date() : null,
+        resolution: i % 4 === 3 ? "設定を修正して解決しました。" : null,
+      },
+    });
+  }
 
   // Grading Profile
   await prisma.gradingProfile.create({

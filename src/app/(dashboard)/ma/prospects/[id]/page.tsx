@@ -14,7 +14,7 @@ interface Prospect {
   email: string;
   firstName: string | null;
   lastName: string | null;
-  company: string | null;
+  companyName: string | null;
   jobTitle: string | null;
   phone: string | null;
   website: string | null;
@@ -123,7 +123,7 @@ export default function ProspectDetailPage() {
       <HighlightPanel
         fields={[
           { label: "メール", value: <a href={`mailto:${prospect.email}`} className="text-primary-600 hover:underline">{prospect.email}</a> },
-          { label: "会社", value: prospect.company ?? "—" },
+          { label: "会社", value: prospect.companyName ?? "—" },
           { label: "役職", value: prospect.jobTitle ?? "—" },
           {
             label: "ステータス",
@@ -177,7 +177,7 @@ export default function ProspectDetailPage() {
                     {[
                       { label: "メールアドレス", value: prospect.email },
                       { label: "電話番号", value: prospect.phone },
-                      { label: "会社名", value: prospect.company },
+                      { label: "会社名", value: prospect.companyName },
                       { label: "役職", value: prospect.jobTitle },
                       { label: "業界", value: prospect.industry },
                       { label: "Webサイト", value: prospect.website ? <a href={prospect.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">{prospect.website}</a> : null },

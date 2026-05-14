@@ -16,7 +16,7 @@ interface ListDetail {
   _count: { memberships: number };
   memberships: {
     addedAt: string;
-    prospect: { id: string; email: string; firstName: string | null; lastName: string | null; company: string | null; score: number; grade: string };
+    prospect: { id: string; email: string; firstName: string | null; lastName: string | null; companyName: string | null; score: number; grade: string };
   }[];
 }
 
@@ -84,7 +84,7 @@ export default function ListDetailPage() {
                     <div className="text-xs text-sf-weak">{[m.prospect.firstName, m.prospect.lastName].filter(Boolean).join(" ")}</div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-sf-text">{m.prospect.company ?? "—"}</td>
+                <td className="px-4 py-3 text-sf-text">{m.prospect.companyName ?? "—"}</td>
                 <td className="px-4 py-3 text-center font-semibold">{m.prospect.score}</td>
                 <td className="px-4 py-3 text-center">
                   <span className="text-xs font-semibold">{m.prospect.grade}</span>

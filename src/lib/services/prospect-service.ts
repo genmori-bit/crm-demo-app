@@ -75,7 +75,7 @@ export async function createProspect(
     email: string;
     firstName?: string | null;
     lastName?: string | null;
-    company?: string | null;
+    companyName?: string | null;
     jobTitle?: string | null;
     phone?: string | null;
     source?: string | null;
@@ -91,7 +91,7 @@ export async function createProspect(
 export async function updateProspect(id: string, data: Partial<{
   firstName: string | null;
   lastName: string | null;
-  company: string | null;
+  companyName: string | null;
   jobTitle: string | null;
   phone: string | null;
   website: string | null;

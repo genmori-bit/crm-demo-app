@@ -11,7 +11,7 @@ export default function EditProspectPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    firstName: "", lastName: "", company: "", jobTitle: "", phone: "",
+    firstName: "", lastName: "", companyName: "", jobTitle: "", phone: "",
     website: "", industry: "", country: "", state: "", city: "",
     status: "active", doNotEmail: false, optedOut: false,
   });
@@ -21,7 +21,7 @@ export default function EditProspectPage() {
       setForm({
         firstName: data.firstName ?? "",
         lastName: data.lastName ?? "",
-        company: data.company ?? "",
+        companyName: data.companyName ?? "",
         jobTitle: data.jobTitle ?? "",
         phone: data.phone ?? "",
         website: data.website ?? "",
@@ -48,7 +48,7 @@ export default function EditProspectPage() {
         ...form,
         firstName: form.firstName || null,
         lastName: form.lastName || null,
-        company: form.company || null,
+        companyName: form.companyName || null,
         jobTitle: form.jobTitle || null,
         phone: form.phone || null,
         website: form.website || null,
@@ -78,7 +78,7 @@ export default function EditProspectPage() {
             <Input label="名" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} />
             <Input label="姓" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} />
           </div>
-          <Input label="会社名" value={form.company} onChange={(e) => set("company", e.target.value)} />
+          <Input label="会社名" value={form.companyName} onChange={(e) => set("companyName", e.target.value)} />
           <Input label="役職" value={form.jobTitle} onChange={(e) => set("jobTitle", e.target.value)} />
           <div className="grid grid-cols-2 gap-4">
             <Input label="電話番号" type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} />

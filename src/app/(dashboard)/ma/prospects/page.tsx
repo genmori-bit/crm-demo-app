@@ -11,7 +11,7 @@ interface Prospect {
   email: string;
   firstName: string | null;
   lastName: string | null;
-  company: string | null;
+  companyName: string | null;
   jobTitle: string | null;
   score: number;
   grade: string;
@@ -170,9 +170,9 @@ export default function ProspectsPage() {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  {p.company ? (
+                  {p.companyName ? (
                     <>
-                      <p className="text-xs text-sf-text">{p.company}</p>
+                      <p className="text-xs text-sf-text">{p.companyName}</p>
                       {p.jobTitle && <p className="text-2xs text-sf-weak mt-0.5">{p.jobTitle}</p>}
                     </>
                   ) : (

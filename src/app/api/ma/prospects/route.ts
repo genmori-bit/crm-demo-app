@@ -7,7 +7,7 @@ const createSchema = z.object({
   email: z.string().email(),
   firstName: z.string().nullable().optional(),
   lastName: z.string().nullable().optional(),
-  company: z.string().nullable().optional(),
+  companyName: z.string().nullable().optional(),
   jobTitle: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   source: z.string().nullable().optional(),
