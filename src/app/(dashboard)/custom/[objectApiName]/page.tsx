@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/ui/loading";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -104,7 +105,7 @@ export default function CustomObjectListPage() {
       <div className="flex-1 p-6">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            <PageLoading />
           </div>
         ) : records.length === 0 ? (
           <div className="text-center py-16 bg-sf-surface rounded-sf border border-dashed border-sf-border">

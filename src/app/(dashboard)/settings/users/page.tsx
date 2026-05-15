@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/ui/loading";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -110,7 +111,7 @@ export default function UsersPage() {
       <div className="flex-1 overflow-x-auto">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            <PageLoading />
           </div>
         ) : (
           <table className="w-full text-sm">

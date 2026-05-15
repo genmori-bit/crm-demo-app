@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/ui/loading";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -89,7 +90,7 @@ export default function NewCustomRecordPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <PageLoading />;
   if (!objectDef) return <div className="p-6 text-sf-weak">オブジェクトが見つかりません</div>;
 
   return (

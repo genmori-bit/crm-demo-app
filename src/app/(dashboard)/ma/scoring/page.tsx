@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/ui/loading";
 
 import { useEffect, useState } from "react";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
@@ -182,7 +183,7 @@ export default function ScoringPage() {
         {/* Rules by category */}
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            <PageLoading />
           </div>
         ) : (
           <div className="space-y-5">

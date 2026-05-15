@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/ui/loading";
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -140,7 +141,7 @@ export default function EmailsPage() {
               <tr>
                 <td colSpan={7} className="text-center py-12 text-sm text-sf-weak">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                    <PageLoading />
                     読み込み中...
                   </div>
                 </td>

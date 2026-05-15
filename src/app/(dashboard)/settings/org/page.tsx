@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/ui/loading";
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
@@ -41,7 +42,7 @@ export default function OrgPage() {
     setForm((p) => p ? { ...p, [k]: k === "fiscalMonth" ? Number(e.target.value) : e.target.value } : p);
 
   if (!form) {
-    return <div className="flex justify-center py-20"><div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
+    return <PageLoading />;
   }
 
   const inputCls = "w-full h-9 px-3 text-xs rounded-sf border border-sf-border bg-sf-surface focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500";

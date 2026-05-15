@@ -1,4 +1,5 @@
 "use client";
+import { PageLoading } from "@/components/ui/loading";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -76,7 +77,7 @@ export default function EngagementProgramsPage() {
       <div className="flex-1 p-6">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            <PageLoading />
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState
