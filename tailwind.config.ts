@@ -69,12 +69,17 @@ const config: Config = {
         "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
       },
       boxShadow: {
-        card: "0 2px 2px 0 rgba(0,0,0,.10)",
-        "card-hover": "0 4px 6px 0 rgba(0,0,0,.14)",
-        dropdown: "0 2px 12px 0 rgba(0,0,0,.16)",
+        card: "0 1px 3px 0 rgba(0,0,0,.08), 0 1px 2px -1px rgba(0,0,0,.06)",
+        "card-hover": "0 4px 8px 0 rgba(0,0,0,.12), 0 2px 4px -2px rgba(0,0,0,.08)",
+        dropdown: "0 4px 16px 0 rgba(0,0,0,.15), 0 1px 4px 0 rgba(0,0,0,.08)",
+        "focus-ring": "0 0 0 3px rgba(1,118,211,0.18)",
       },
       borderRadius: {
-        sf: "0.25rem", // 4px — SF uses small border radius
+        sf: "0.25rem", // 4px
+      },
+      transitionDuration: {
+        100: "100ms",
+        120: "120ms",
       },
     },
   },

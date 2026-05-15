@@ -30,7 +30,8 @@ export function RecordTabs({
     <Ctx.Provider value={{ active, setActive }}>
       <div className="bg-sf-surface border-b border-sf-border sticky top-14 z-30">
         <nav
-          className="flex px-6 overflow-x-auto scrollbar-none"
+          className="flex px-6 overflow-x-auto"
+          style={{ scrollbarWidth: "none" }}
           role="tablist"
           aria-label="レコードタブ"
         >
@@ -41,7 +42,7 @@ export function RecordTabs({
               aria-selected={active === tab.id}
               onClick={() => setActive(tab.id)}
               className={cn(
-                "flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200",
+                "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-200",
                 active === tab.id
                   ? "border-primary-500 text-primary-600"
                   : "border-transparent text-sf-weak hover:text-sf-text hover:border-sf-border"
@@ -51,9 +52,9 @@ export function RecordTabs({
               {tab.count !== undefined && (
                 <span
                   className={cn(
-                    "text-2xs px-1.5 py-0.5 rounded-full font-semibold",
+                    "text-2xs px-1.5 py-0.5 rounded-full font-bold tabular-nums leading-none",
                     active === tab.id
-                      ? "bg-primary-100 text-primary-700"
+                      ? "bg-info-light text-primary-600"
                       : "bg-sf-bg text-sf-weak"
                   )}
                 >
@@ -78,5 +79,5 @@ export function TabPanel({
 }) {
   const { active } = useContext(Ctx);
   if (active !== id) return null;
-  return <div role="tabpanel">{children}</div>;
+  return <div role="tabpanel" className="animate-in">{children}</div>;
 }
