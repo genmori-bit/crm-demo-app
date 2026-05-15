@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
+import { api } from "@/lib/api-client";
 import Link from "next/link";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
@@ -104,13 +106,27 @@ function TodayBadge({ dueDate }: { dueDate: string | null }) {
 }
 
 export default function DashboardPage() {
+  const showToast = useToast();
   const [data, setData] = useState<DashboardData | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetch("/api/dashboard")
       .then((r) => r.json())
       .then(setData);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const toggleTask = async (taskId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "done" ? "todo" : "done";
+    try {
+      await api.patch(`/api/tasks/${taskId}`, { status: newStatus });
+      showToast(newStatus === "done" ? "タスクを完了にしました" : "タスクを未着手に戻しました");
+      load();
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
 
   const today = new Date();
   const dateLabel = today.toLocaleDateString("ja-JP", {
@@ -219,6 +235,7 @@ export default function DashboardPage() {
             value={`${data.activeDealsCount}件`}
             sub={formatAmount(data.activeDealsAmount)}
             accent="primary"
+            href="/deals?view=active"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -230,6 +247,7 @@ export default function DashboardPage() {
             value={formatAmount(data.expectedRevenue)}
             sub="確度加重"
             accent="success"
+            href="/deals"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -241,6 +259,7 @@ export default function DashboardPage() {
             value={`${data.pendingTasksCount}件`}
             sub={data.overdueTasksCount > 0 ? `期限超過 ${data.overdueTasksCount}件` : "期限切れなし"}
             accent={data.overdueTasksCount > 0 ? "danger" : "default"}
+            href="/tasks"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -252,6 +271,7 @@ export default function DashboardPage() {
             value={`${data.closingThisMonth.length}件`}
             sub={formatAmount(data.closingThisMonth.reduce((s, d) => s + d.amount, 0))}
             accent="warning"
+            href="/deals"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -262,6 +282,7 @@ export default function DashboardPage() {
             label="顧客企業数"
             value={`${data.companyCount}社`}
             accent="default"
+            href="/companies"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -272,6 +293,7 @@ export default function DashboardPage() {
             label="担当者数"
             value={`${data.contactCount}人`}
             accent="default"
+            href="/contacts"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -435,7 +457,11 @@ export default function DashboardPage() {
                   {urgentTasks.map((task) => (
                     <li key={task.id} className="px-4 py-3 hover:bg-sf-bg transition-colors">
                       <div className="flex items-start gap-2">
-                        <div className="w-3.5 h-3.5 rounded border-2 border-danger mt-0.5 shrink-0" />
+                        <button
+                          onClick={() => toggleTask(task.id, task.status)}
+                          className="w-3.5 h-3.5 rounded border-2 border-danger mt-0.5 shrink-0 hover:bg-danger/10 transition-colors focus:outline-none"
+                          aria-label="完了にする"
+                        />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <p className="text-xs font-medium text-sf-text leading-snug">{task.title}</p>
@@ -459,7 +485,11 @@ export default function DashboardPage() {
                   {upcomingTasks.map((task) => (
                     <li key={task.id} className="px-4 py-3 hover:bg-sf-bg transition-colors">
                       <div className="flex items-start gap-2">
-                        <div className="w-3.5 h-3.5 rounded border-2 border-sf-border mt-0.5 shrink-0" />
+                        <button
+                          onClick={() => toggleTask(task.id, task.status)}
+                          className="w-3.5 h-3.5 rounded border-2 border-sf-border mt-0.5 shrink-0 hover:border-primary-400 hover:bg-primary-50 transition-colors focus:outline-none"
+                          aria-label="完了にする"
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-sf-text leading-snug">{task.title}</p>
                           <div className="flex items-center gap-2 mt-0.5">
