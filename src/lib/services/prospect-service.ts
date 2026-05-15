@@ -66,6 +66,8 @@ export async function getProspect(id: string) {
         orderBy: { submittedAt: "desc" },
         take: 10,
       },
+      crmLead: { select: { id: true, fullName: true, status: true } },
+      crmContact: { select: { id: true, fullName: true } },
     },
   });
 }

@@ -34,6 +34,8 @@ interface Prospect {
   listMemberships: { list: { id: string; name: string } }[];
   emailRecipients: { email: { id: string; name: string; subject: string; sentAt: string | null }; status: string }[];
   formSubmissions: { form: { id: string; name: string }; submittedAt: string }[];
+  crmLead: { id: string; fullName: string; status: string } | null;
+  crmContact: { id: string; fullName: string } | null;
 }
 
 const GRADE_STYLE: Record<string, string> = {
@@ -277,6 +279,37 @@ export default function ProspectDetailPage() {
                   </ul>
                 )}
               </LightningCard>
+
+              {/* CRM Link */}
+              {(prospect.crmLead || prospect.crmContact) && (
+                <LightningCard>
+                  <LightningCardHeader title="CRM連携" icon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  } />
+                  <LightningCardBody>
+                    <div className="space-y-2">
+                      {prospect.crmLead && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-sf-weak">リード</span>
+                          <Link href={`/leads/${prospect.crmLead.id}`} className="text-xs text-primary-600 hover:underline font-medium">
+                            {prospect.crmLead.fullName}
+                          </Link>
+                        </div>
+                      )}
+                      {prospect.crmContact && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-sf-weak">担当者</span>
+                          <Link href={`/contacts/${prospect.crmContact.id}`} className="text-xs text-primary-600 hover:underline font-medium">
+                            {prospect.crmContact.fullName}
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  </LightningCardBody>
+                </LightningCard>
+              )}
             </div>
           </div>
         </TabPanel>

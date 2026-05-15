@@ -48,15 +48,26 @@ function parseCsv(text: string): Record<string, string>[] {
 
 const FIELD_MAP: Record<string, Record<string, string>> = {
   company: {
-    "会社名": "companyName",
-    "業種": "industry",
-    "ステータス": "status",
-    "規模": "employeeSize",
-    "担当者": "ownerName",
-    "電話": "phone",
-    "Web": "website",
-    "メモ": "memo",
+    "会社名": "companyName", "業種": "industry", "ステータス": "status",
+    "規模": "employeeSize", "担当者": "ownerName", "電話": "phone", "Web": "website", "メモ": "memo",
   },
+  lead: {
+    "氏名": "fullName", "名": "firstName", "姓": "lastName", "メール": "email",
+    "電話": "phone", "会社名": "companyName", "役職": "title", "業種": "industry",
+    "ソース": "source", "ステータス": "status", "評価": "rating",
+  },
+  case: {
+    "件名": "subject", "説明": "description", "ステータス": "status",
+    "優先度": "priority", "タイプ": "type", "問い合わせ経路": "origin",
+  },
+};
+
+const OBJECT_LABELS: Record<string, string> = {
+  company: "企業", lead: "リード", case: "ケース",
+};
+
+const OBJECT_REQUIRED: Record<string, string> = {
+  company: "会社名", lead: "氏名 または 姓", case: "件名",
 };
 
 export default function ImportPage() {
@@ -65,7 +76,7 @@ export default function ImportPage() {
   const [jobs, setJobs] = useState<ImportJob[] | null>(null);
   const [preview, setPreview] = useState<Record<string, string>[] | null>(null);
   const [fileName, setFileName] = useState("");
-  const [objectType] = useState("company");
+  const [objectType, setObjectType] = useState("company");
   const [importing, setImporting] = useState(false);
 
   const loadJobs = () => api.get<ImportJob[]>("/api/import").then(setJobs);
@@ -127,10 +138,20 @@ export default function ImportPage() {
           <LightningCardBody>
             <div className="space-y-4">
               <div>
+                <label className="block text-xs font-medium text-sf-text mb-1">インポート先オブジェクト</label>
+                <select
+                  className="border border-sf-border rounded px-3 py-1.5 text-sm mb-3"
+                  value={objectType}
+                  onChange={(e) => { setObjectType(e.target.value); setPreview(null); setFileName(""); if (fileRef.current) fileRef.current.value = ""; }}
+                >
+                  {Object.entries(OBJECT_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
                 <p className="text-sm text-sf-weak mb-3">
-                  企業データをCSVファイルからインポートします。<br />
-                  必須列: <code className="bg-sf-bg px-1 py-0.5 rounded text-xs">会社名</code>
-                  &nbsp;任意列: 業種, ステータス, 規模, 担当者, 電話, Web, メモ
+                  {OBJECT_LABELS[objectType]}データをCSVファイルからインポートします。<br />
+                  必須列: <code className="bg-sf-bg px-1 py-0.5 rounded text-xs">{OBJECT_REQUIRED[objectType]}</code>
+                  &nbsp;対応列: {Object.keys(FIELD_MAP[objectType] ?? {}).join(", ")}
                 </p>
                 <div
                   className="border-2 border-dashed border-sf-border rounded-sf p-8 text-center hover:border-primary-300 transition-colors cursor-pointer"
