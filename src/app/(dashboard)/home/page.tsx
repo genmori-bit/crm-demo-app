@@ -119,11 +119,32 @@ export default function DashboardPage() {
 
   if (!data) {
     return (
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-sf-text">ダッシュボード</h1>
+      <div className="flex flex-col min-h-screen">
+        <div className="bg-sf-surface border-b border-sf-border px-6 py-4">
+          <div className="h-6 skeleton w-32 mb-1" />
+          <div className="h-3.5 skeleton w-56" />
         </div>
-        <PageLoading />
+        <div className="p-6 flex-1 space-y-5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-sf-surface rounded-sf border border-sf-border shadow-card p-4 space-y-3 animate-in">
+                <div className="h-3.5 skeleton w-1/2" />
+                <div className="h-7 skeleton w-3/4" />
+                <div className="h-3 skeleton w-2/3" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-5">
+            <div className="col-span-2 space-y-5">
+              <div className="bg-sf-surface rounded-sf border border-sf-border shadow-card h-48 animate-in" />
+              <div className="bg-sf-surface rounded-sf border border-sf-border shadow-card h-64 animate-in" />
+            </div>
+            <div className="space-y-4">
+              <div className="bg-sf-surface rounded-sf border border-sf-border shadow-card h-40 animate-in" />
+              <div className="bg-sf-surface rounded-sf border border-sf-border shadow-card h-56 animate-in" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

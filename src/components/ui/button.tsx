@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "neutral";
+type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "neutral" | "success";
 type ButtonSize = "xs" | "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -22,6 +22,8 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-transparent text-sf-text border border-transparent hover:bg-sf-bg active:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-1",
   neutral:
     "bg-white text-sf-text border border-sf-border hover:bg-sf-bg shadow-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-1",
+  success:
+    "bg-success text-white border border-success hover:opacity-90 active:opacity-80 focus-visible:ring-2 focus-visible:ring-green-200 focus-visible:ring-offset-1 shadow-sm",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
