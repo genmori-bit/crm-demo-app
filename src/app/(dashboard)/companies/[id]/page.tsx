@@ -163,6 +163,15 @@ function fmtCurrency(n?: number | null): string {
   return `¥${n.toLocaleString()}`;
 }
 
+function fmtCompact(n?: number | null): string {
+  if (n == null) return "—";
+  if (n === 0) return "¥0";
+  const abs = Math.abs(n);
+  if (abs >= 1_0000_0000) return `¥${(n / 1_0000_0000).toFixed(abs % 1_0000_0000 === 0 ? 0 : 1)}億`;
+  if (abs >= 1_0000)      return `¥${(n / 1_0000).toFixed(abs % 1_0000 === 0 ? 0 : 1)}万`;
+  return `¥${n.toLocaleString()}`;
+}
+
 function AddButton({ href, label = "追加" }: { href: string; label?: string }) {
   return (
     <Link href={href} className="flex items-center gap-1 text-xs text-primary-500 hover:underline">
@@ -1315,7 +1324,8 @@ export default function CompanyDetailPage() {
           <div className="grid grid-cols-4 lg:grid-cols-7 gap-3">
             <KpiCard
               label="商談パイプライン"
-              value={`¥${rollup.openPipelineAmount.toLocaleString()}`}
+              value={fmtCompact(rollup.openPipelineAmount)}
+              sub={`¥${rollup.openPipelineAmount.toLocaleString()}`}
               accent="primary"
             />
             <KpiCard
@@ -1326,12 +1336,14 @@ export default function CompanyDetailPage() {
             />
             <KpiCard
               label="受注金額"
-              value={`¥${rollup.wonAmount.toLocaleString()}`}
+              value={fmtCompact(rollup.wonAmount)}
+              sub={`¥${rollup.wonAmount.toLocaleString()}`}
               accent="success"
             />
             <KpiCard
               label="ARR"
-              value={`¥${(company.arr ?? 0).toLocaleString()}`}
+              value={fmtCompact(company.arr ?? 0)}
+              sub={company.arr ? `¥${company.arr.toLocaleString()}` : undefined}
               accent="success"
             />
             <KpiCard

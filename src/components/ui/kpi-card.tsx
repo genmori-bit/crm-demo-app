@@ -45,7 +45,12 @@ export function KpiCard({
         <p className="text-xs font-semibold text-sf-weak uppercase tracking-wider mb-1.5 truncate">
           {label}
         </p>
-        <p className="text-[1.625rem] font-bold text-sf-text leading-none tabular-nums">{value}</p>
+        <p className={cn(
+          "font-bold text-sf-text leading-none tabular-nums truncate",
+          String(value).length <= 7  ? "text-[1.625rem]" :
+          String(value).length <= 10 ? "text-xl" :
+          "text-base"
+        )}>{value}</p>
         {sub && (
           <p className="text-xs text-sf-weak mt-1.5 leading-snug">{sub}</p>
         )}

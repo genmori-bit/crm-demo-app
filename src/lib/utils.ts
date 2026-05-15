@@ -25,6 +25,22 @@ export function formatAmount(amount: number): string {
   }).format(amount);
 }
 
+/** KPIカード用: 大きな数値を万/億単位で短縮表示 */
+export function formatAmountCompact(amount: number | null | undefined): string {
+  if (amount == null) return "—";
+  if (amount === 0) return "¥0";
+  const abs = Math.abs(amount);
+  if (abs >= 1_0000_0000) {
+    const v = amount / 1_0000_0000;
+    return `¥${v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)}億`;
+  }
+  if (abs >= 1_0000) {
+    const v = amount / 1_0000;
+    return `¥${v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)}万`;
+  }
+  return `¥${amount.toLocaleString()}`;
+}
+
 export function isOverdue(date: Date | string | null | undefined): boolean {
   if (!date) return false;
   return isBefore(startOfDay(new Date(date)), startOfDay(new Date()));

@@ -10,7 +10,7 @@ import { HorizontalBarChart, DonutChart } from "@/components/ui/simple-chart";
 import { ActivityTimeline } from "@/components/ui/activity-timeline";
 import { DealStageBadge, TaskPriorityBadge } from "@/components/ui/status-badges";
 import { PageLoading } from "@/components/ui/loading";
-import { formatAmount, formatDate, isOverdue } from "@/lib/utils";
+import { formatAmount, formatAmountCompact, formatDate, isOverdue } from "@/lib/utils";
 import { DEAL_STAGE_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -244,8 +244,8 @@ export default function DashboardPage() {
           />
           <KpiCard
             label="受注見込み"
-            value={formatAmount(data.expectedRevenue)}
-            sub="確度加重"
+            value={formatAmountCompact(data.expectedRevenue)}
+            sub={`¥${data.expectedRevenue.toLocaleString()} (確度加重)`}
             accent="success"
             href="/deals"
             icon={
