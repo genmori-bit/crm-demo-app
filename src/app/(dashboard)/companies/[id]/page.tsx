@@ -10,6 +10,7 @@ import { PageLoading } from "@/components/ui/loading";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
+import { FileAttachmentsCard } from "@/components/ui/file-attachments-card";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -781,6 +782,9 @@ function RelatedTab({ company }: { company: Company }) {
           )}
         </LightningCard>
       ))}
+
+      {/* Files */}
+      <FileAttachmentsCard apiBase={`/api/companies/${company.id}/files`} />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { PageLoading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api-client";
 import { formatDate, formatAmount, isOverdue } from "@/lib/utils";
+import { FileAttachmentsCard } from "@/components/ui/file-attachments-card";
 import { cn } from "@/lib/utils";
 
 interface Deal {
@@ -338,6 +339,9 @@ export default function DealDetailPage() {
                 </div>
               )}
             </LightningCard>
+
+            {/* File Attachments */}
+            <FileAttachmentsCard apiBase={`/api/deals/${id}/files`} />
           </div>
         </div>
       </div>
