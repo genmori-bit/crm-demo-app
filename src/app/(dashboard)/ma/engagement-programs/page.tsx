@@ -42,7 +42,7 @@ export default function EngagementProgramsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-sf-text">エンゲージメントプログラム</h1>
-            <p className="text-xs text-sf-weak mt-0.5">プロスペクトを自動的にナーチャリングします</p>
+            <p className="text-xs text-sf-weak mt-0.5">リードを自動的にナーチャリングします</p>
           </div>
           <button
             onClick={() => router.push("/ma/engagement-programs/new")}

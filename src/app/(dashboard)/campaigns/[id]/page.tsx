@@ -130,8 +130,8 @@ export default function CampaignDetailPage() {
                 <tbody className="divide-y divide-sf-border">
                   {campaign.members.map((m) => {
                     const name = m.contact?.fullName ?? m.lead?.fullName ?? m.prospect?.email ?? "—";
-                    const type = m.contact ? "コンタクト" : m.lead ? "リード" : "プロスペクト";
-                    const href = m.contact ? `/contacts/${m.contact.id}` : m.lead ? `/leads/${m.lead.id}` : `/ma/prospects/${m.prospect?.id}`;
+                    const type = m.contact ? "コンタクト" : m.lead ? "リード" : "MAリード";
+                    const href = m.contact ? `/contacts/${m.contact.id}` : m.lead ? `/leads/${m.lead.id}` : `/ma/leads/${m.prospect?.id}`;
                     return (
                       <tr key={m.id}>
                         <td className="py-2">

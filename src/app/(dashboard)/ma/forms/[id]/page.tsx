@@ -95,7 +95,7 @@ export default function FormDetailPage() {
               <table className="w-full text-xs">
                 <thead><tr className="border-b border-sf-border">
                   <th className="text-left py-2 text-sf-weak">送信日時</th>
-                  <th className="text-left py-2 text-sf-weak">プロスペクト</th>
+                  <th className="text-left py-2 text-sf-weak">リード</th>
                   <th className="text-left py-2 text-sf-weak">データ</th>
                 </tr></thead>
                 <tbody className="divide-y divide-sf-border">
@@ -104,7 +104,7 @@ export default function FormDetailPage() {
                       <td className="py-2 text-sf-weak">{new Date(s.submittedAt).toLocaleString("ja-JP")}</td>
                       <td className="py-2">
                         {s.prospect ? (
-                          <Link href={`/ma/prospects/${s.prospect.id}`} className="text-primary-600 hover:underline">{s.prospect.email}</Link>
+                          <Link href={`/ma/leads/${s.prospect.id}`} className="text-primary-600 hover:underline">{s.prospect.email}</Link>
                         ) : "—"}
                       </td>
                       <td className="py-2 text-sf-text">{Object.entries(s.data as Record<string,unknown>).map(([k, v]) => `${k}: ${v}`).join(", ")}</td>

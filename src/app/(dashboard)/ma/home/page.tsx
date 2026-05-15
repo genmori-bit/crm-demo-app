@@ -9,7 +9,7 @@ import { PageLoading } from "@/components/ui/loading";
 import { DonutChart } from "@/components/ui/simple-chart";
 
 interface Stats {
-  prospects: {
+  leads: {
     total: number;
     active: number;
     converted: number;
@@ -39,9 +39,9 @@ export default function MAHomePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/ma/prospects/stats").then((r) => r.json()),
+      fetch("/api/ma/leads/stats").then((r) => r.json()),
       fetch("/api/ma/emails/stats").then((r) => r.json()),
-    ]).then(([prospects, emails]) => setStats({ prospects, emails }));
+    ]).then(([leads, emails]) => setStats({ leads, emails }));
   }, []);
 
   const today = new Date();
@@ -58,16 +58,16 @@ export default function MAHomePage() {
       ? Math.round((stats.emails.totalClicked / stats.emails.totalSent) * 100)
       : 0;
 
-  const prospectStatusData = stats
+  const leadStatusData = stats
     ? [
-        { label: "アクティブ", value: stats.prospects.active, color: "#0176d3" },
-        { label: "コンバート済み", value: stats.prospects.converted, color: "#2e844a" },
-        { label: "オプトアウト", value: stats.prospects.optedOut, color: "#706e6b" },
+        { label: "アクティブ", value: stats.leads.active, color: "#0176d3" },
+        { label: "コンバート済み", value: stats.leads.converted, color: "#2e844a" },
+        { label: "オプトアウト", value: stats.leads.optedOut, color: "#706e6b" },
         {
           label: "その他",
           value: Math.max(
             0,
-            stats.prospects.total - stats.prospects.active - stats.prospects.converted - stats.prospects.optedOut
+            stats.leads.total - stats.leads.active - stats.leads.converted - stats.leads.optedOut
           ),
           color: "#dd7a01",
         },
@@ -92,17 +92,17 @@ export default function MAHomePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-sf-text">マーケティングホーム</h1>
-            <p className="text-xs text-sf-weak mt-0.5">{dateLabel} · プロスペクトとエンゲージメントの概要</p>
+            <p className="text-xs text-sf-weak mt-0.5">{dateLabel} · リードとエンゲージメントの概要</p>
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/ma/prospects/new"
+              href="/ma/leads/new"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-sf-text border border-sf-border rounded-sf hover:bg-sf-bg transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              プロスペクト追加
+              新規リード
             </Link>
             <Link
               href="/ma/emails/new"
@@ -121,9 +121,9 @@ export default function MAHomePage() {
         {/* KPI row */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
           <KpiCard
-            label="プロスペクト数"
-            value={`${stats.prospects.total}人`}
-            sub={`アクティブ ${stats.prospects.active}人`}
+            label="リード数"
+            value={`${stats.leads.total}人`}
+            sub={`アクティブ ${stats.leads.active}人`}
             accent="primary"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -133,8 +133,8 @@ export default function MAHomePage() {
           />
           <KpiCard
             label="コンバート済み"
-            value={`${stats.prospects.converted}人`}
-            sub={stats.prospects.total > 0 ? `転換率 ${Math.round((stats.prospects.converted / stats.prospects.total) * 100)}%` : "—"}
+            value={`${stats.leads.converted}人`}
+            sub={stats.leads.total > 0 ? `転換率 ${Math.round((stats.leads.converted / stats.leads.total) * 100)}%` : "—"}
             accent="success"
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -144,7 +144,7 @@ export default function MAHomePage() {
           />
           <KpiCard
             label="平均スコア"
-            value={stats.prospects.avgScore ?? "—"}
+            value={stats.leads.avgScore ?? "—"}
             sub="スコアリング集計"
             accent="default"
             icon={
@@ -207,9 +207,9 @@ export default function MAHomePage() {
               <LightningCardBody>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <CueCard
-                    title="プロスペクト追加"
-                    description="新規プロスペクトを手動で登録します"
-                    href="/ma/prospects/new"
+                    title="新規リード"
+                    description="新規リードを手動で登録します"
+                    href="/ma/leads/new"
                     accent="primary"
                     icon={
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -241,7 +241,7 @@ export default function MAHomePage() {
                     }
                   />
                   <CueCard
-                    title="プロスペクトリスト作成"
+                    title="リストを作成"
                     description="セグメント別にリストを作成して管理します"
                     href="/ma/lists/new"
                     accent="success"
@@ -342,9 +342,9 @@ export default function MAHomePage() {
             {/* Prospect status donut */}
             <LightningCard>
               <LightningCardHeader
-                title="プロスペクトステータス"
+                title="リードステータス"
                 action={
-                  <Link href="/ma/prospects" className="text-xs text-primary-500 hover:underline">
+                  <Link href="/ma/leads" className="text-xs text-primary-500 hover:underline">
                     一覧
                   </Link>
                 }
@@ -355,10 +355,10 @@ export default function MAHomePage() {
                 }
               />
               <LightningCardBody>
-                {prospectStatusData.length === 0 ? (
+                {leadStatusData.length === 0 ? (
                   <p className="text-sm text-sf-weak text-center py-4">データがありません</p>
                 ) : (
-                  <DonutChart data={prospectStatusData} size={110} centerLabel="人" />
+                  <DonutChart data={leadStatusData} size={110} centerLabel="人" />
                 )}
               </LightningCardBody>
             </LightningCard>
@@ -381,7 +381,7 @@ export default function MAHomePage() {
               <div className="divide-y divide-sf-border">
                 {[
                   { label: "メールパフォーマンス", href: "/ma/reports" },
-                  { label: "プロスペクトスコアリング", href: "/ma/scoring" },
+                  { label: "リードスコアリング", href: "/ma/scoring" },
                   { label: "フォーム提出レポート", href: "/ma/forms" },
                   { label: "エンゲージメント分析", href: "/ma/engagement-programs" },
                 ].map((item) => (

@@ -51,7 +51,7 @@ export default function ListDetailPage() {
           {list.description && <p className="text-sm text-sf-weak">{list.description}</p>}
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => router.push(`/ma/prospects?listId=${id}`)}>プロスペクト追加</Button>
+          <Button variant="secondary" onClick={() => router.push(`/ma/leads?listId=${id}`)}>リード追加</Button>
         </div>
       </div>
 
@@ -79,7 +79,7 @@ export default function ListDetailPage() {
             ) : list.memberships.map((m) => (
               <tr key={m.prospect.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
-                  <Link href={`/ma/prospects/${m.prospect.id}`} className="font-medium text-primary-600 hover:underline block">{m.prospect.email}</Link>
+                  <Link href={`/ma/leads/${m.prospect.id}`} className="font-medium text-primary-600 hover:underline block">{m.prospect.email}</Link>
                   {(m.prospect.firstName || m.prospect.lastName) && (
                     <div className="text-xs text-sf-weak">{[m.prospect.firstName, m.prospect.lastName].filter(Boolean).join(" ")}</div>
                   )}

@@ -49,7 +49,7 @@ export default function ListsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-sf-text">リスト</h1>
-            <p className="text-xs text-sf-weak mt-0.5">プロスペクトのセグメントリスト</p>
+            <p className="text-xs text-sf-weak mt-0.5">リードのセグメントリスト</p>
           </div>
           <button
             onClick={() => router.push("/ma/lists/new")}
@@ -98,7 +98,7 @@ export default function ListsPage() {
                 <td colSpan={6} className="py-16">
                   <EmptyState
                     title="リストがありません"
-                    description={search ? "検索条件に一致するリストがありません" : "プロスペクトを整理するリストを作成しましょう"}
+                    description={search ? "検索条件に一致するリストがありません" : "リードを整理するリストを作成しましょう"}
                     action={!search ? { label: "新規リスト", onClick: () => router.push("/ma/lists/new") } : undefined}
                   />
                 </td>

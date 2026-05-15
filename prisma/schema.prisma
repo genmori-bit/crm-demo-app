@@ -435,39 +435,163 @@ model Lead {
   mobilePhone           String?
   companyName           String?
   title                 String?
+  department            String?
   industry              String?
   website               String?
+  country               String?
+  prefecture            String?
+  city                  String?
   source                String?
+  leadSource            String?
   status                String    @default("NEW")
+  lifecycleStage        String?
   rating                String    @default("COLD")
-  score                 Int?
-  grade                 String?
+  score                 Int?      @default(0)
+  grade                 String?   @default("D")
+  doNotEmail            Boolean   @default(false)
+  optedOut              Boolean   @default(false)
+  optedOutAt            DateTime?
+  emailBounced          Boolean   @default(false)
+  emailBouncedAt        DateTime?
+  spamComplaint         Boolean   @default(false)
+  consentStatus         String    @default("UNKNOWN")
+  consentUpdatedAt      DateTime?
   ownerId               String?
+  assignedUserId        String?
   companyId             String?
+  crmContactId          String?
+  crmAccountId          String?
   prospectId            String?   @unique
   convertedAccountId    String?
   convertedContactId    String?
   convertedDealId       String?
   convertedAt           DateTime?
   disqualifiedReason    String?
+  lastActivityAt        DateTime?
   customFields          Json      @default("{}")
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   deletedAt             DateTime?
 
-  company             Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  prospect            Prospect?        @relation(fields: [prospectId], references: [id], onDelete: SetNull)
-  activities          Activity[]
-  tasks               Task[]
-  campaignMembers     CampaignMember[]
-  activityRelations   ActivityRelation[]
+  company              Company?              @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  prospect             Prospect?             @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  activities           Activity[]
+  tasks                Task[]
+  campaignMembers      CampaignMember[]
+  activityRelations    ActivityRelation[]
+  engagementActivities LeadEngagementActivity[]
+  listMemberships      LeadListMembership[]
+  emailRecipients      LeadEmailRecipient[]
+  formSubmissions      LeadFormSubmission[]
+  programEnrollments   LeadProgramEnrollment[]
 
   @@index([email])
   @@index([status])
+  @@index([lifecycleStage])
+  @@index([score])
+  @@index([grade])
   @@index([ownerId])
+  @@index([assignedUserId])
   @@index([companyId])
+  @@index([crmContactId])
   @@index([prospectId])
+  @@index([lastActivityAt])
+  @@index([convertedAt])
   @@index([deletedAt])
+}
+
+// Lead-centric MA activity (replaces ProspectActivity for new records)
+model LeadEngagementActivity {
+  id         String   @id @default(cuid())
+  leadId     String
+  type       String
+  description String
+  metadata   Json     @default("{}")
+  score      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// Lead-centric list membership (replaces MarketingListMembership for new records)
+model LeadListMembership {
+  listId    String
+  leadId    String
+  addedAt   DateTime @default(now())
+  addedBy   String?
+
+  list MarketingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  lead Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@id([listId, leadId])
+  @@index([listId])
+  @@index([leadId])
+}
+
+// Lead-centric email recipient (replaces EmailRecipient for new records)
+model LeadEmailRecipient {
+  id         String    @id @default(cuid())
+  emailId    String
+  leadId     String
+  status     String    @default("pending")
+  sentAt     DateTime?
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  bouncedAt  DateTime?
+  optedOutAt DateTime?
+  metadata   Json      @default("{}")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  email MarketingEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  lead  Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([emailId])
+  @@index([leadId])
+  @@index([status])
+}
+
+// Lead-centric form submission (replaces FormSubmission for new records)
+model LeadFormSubmission {
+  id          String   @id @default(cuid())
+  formId      String
+  leadId      String?
+  data        Json     @default("{}")
+  ipAddress   String?
+  userAgent   String?
+  pageUrl     String?
+  submittedAt DateTime @default(now())
+
+  form MarketingForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  lead Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([formId])
+  @@index([leadId])
+  @@index([submittedAt])
+}
+
+// Lead-centric program enrollment (replaces ProgramEnrollment for new records)
+model LeadProgramEnrollment {
+  id          String    @id @default(cuid())
+  programId   String
+  leadId      String
+  status      String    @default("active")
+  currentNode String?
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  program EngagementProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  lead    Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, leadId])
+  @@index([programId])
+  @@index([leadId])
+  @@index([status])
 }
 
 model OpportunityContactRole {
@@ -1127,8 +1251,9 @@ model MarketingList {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  memberships MarketingListMembership[]
-  emailSends  MarketingEmail[]
+  memberships     MarketingListMembership[]
+  leadMemberships LeadListMembership[]
+  emailSends      MarketingEmail[]
 
   @@index([type])
   @@index([deletedAt])
@@ -1198,7 +1323,8 @@ model MarketingEmail {
   template   EmailTemplate?  @relation(fields: [templateId], references: [id])
   list       MarketingList?  @relation(fields: [listId], references: [id])
   campaign   Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  recipients EmailRecipient[]
+  recipients     EmailRecipient[]
+  leadRecipients LeadEmailRecipient[]
 
   @@index([status])
   @@index([scheduledAt])
@@ -1243,9 +1369,10 @@ model MarketingForm {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  campaign    Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  submissions FormSubmission[]
-  handlers    FormHandler[]
+  campaign         Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  submissions      FormSubmission[]
+  leadSubmissions  LeadFormSubmission[]
+  handlers         FormHandler[]
 
   @@index([isActive])
   @@index([campaignId])
@@ -1325,9 +1452,10 @@ model EngagementProgram {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  campaign    Campaign?              @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  nodes       EngagementProgramNode[]
-  enrollments ProgramEnrollment[]
+  campaign         Campaign?              @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  nodes            EngagementProgramNode[]
+  enrollments      ProgramEnrollment[]
+  leadEnrollments  LeadProgramEnrollment[]
 
   @@index([status])
   @@index([campaignId])

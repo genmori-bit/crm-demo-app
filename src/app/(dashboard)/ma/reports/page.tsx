@@ -8,7 +8,7 @@ import { PageLoading } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 interface Stats {
-  prospects: { total: number; active: number; converted: number; optedOut: number; avgScore: number };
+  leads: { total: number; active: number; converted: number; optedOut: number; avgScore: number };
   emails: { total: number; sent: number; drafts: number; scheduled: number; totalSent: number; totalOpened: number; totalClicked: number };
 }
 
@@ -37,9 +37,9 @@ export default function MAReportsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/ma/prospects/stats").then((r) => r.json()),
+      fetch("/api/ma/leads/stats").then((r) => r.json()),
       fetch("/api/ma/emails/stats").then((r) => r.json()),
-    ]).then(([prospects, emails]) => setStats({ prospects, emails }));
+    ]).then(([leads, emails]) => setStats({ leads, emails }));
   }, []);
 
   if (!stats) {
@@ -55,7 +55,7 @@ export default function MAReportsPage() {
 
   const openRate = stats.emails.totalSent > 0 ? (stats.emails.totalOpened / stats.emails.totalSent) * 100 : 0;
   const clickRate = stats.emails.totalSent > 0 ? (stats.emails.totalClicked / stats.emails.totalSent) * 100 : 0;
-  const conversionRate = stats.prospects.total > 0 ? (stats.prospects.converted / stats.prospects.total) * 100 : 0;
+  const conversionRate = stats.leads.total > 0 ? (stats.leads.converted / stats.leads.total) * 100 : 0;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -68,16 +68,16 @@ export default function MAReportsPage() {
         {/* KPI row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
-            label="プロスペクト総数"
-            value={stats.prospects.total.toLocaleString()}
-            sub={`アクティブ ${stats.prospects.active.toLocaleString()}人`}
+            label="リード総数"
+            value={stats.leads.total.toLocaleString()}
+            sub={`アクティブ ${stats.leads.active.toLocaleString()}人`}
             accent="primary"
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
           />
           <KpiCard
             label="コンバージョン率"
             value={`${conversionRate.toFixed(1)}%`}
-            sub={`${stats.prospects.converted.toLocaleString()}件転換`}
+            sub={`${stats.leads.converted.toLocaleString()}件転換`}
             accent={conversionRate >= 10 ? "success" : conversionRate >= 5 ? "warning" : "danger"}
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           />
@@ -114,19 +114,19 @@ export default function MAReportsPage() {
             </LightningCardBody>
           </LightningCard>
 
-          {/* Prospect funnel */}
+          {/* Lead funnel */}
           <LightningCard>
             <LightningCardHeader
-              title="プロスペクトファネル"
-              action={<Link href="/ma/prospects" className="text-xs text-primary-500 hover:underline">プロスペクト一覧</Link>}
+              title="リードファネル"
+              action={<Link href="/ma/leads" className="text-xs text-primary-500 hover:underline">リード一覧</Link>}
               icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
             />
             <LightningCardBody>
               <div className="space-y-3">
-                <FunnelBar label="総数" value={stats.prospects.total} max={stats.prospects.total} color="bg-primary-400" href="/ma/prospects" />
-                <FunnelBar label="アクティブ" value={stats.prospects.active} max={stats.prospects.total} color="bg-blue-400" href="/ma/prospects?status=active" />
-                <FunnelBar label="コンバート済み" value={stats.prospects.converted} max={stats.prospects.total} color="bg-success" href="/ma/prospects?status=converted" />
-                <FunnelBar label="オプトアウト" value={stats.prospects.optedOut} max={stats.prospects.total} color="bg-danger/70" href="/ma/prospects?optedOut=true" />
+                <FunnelBar label="総数" value={stats.leads.total} max={stats.leads.total} color="bg-primary-400" href="/ma/leads" />
+                <FunnelBar label="アクティブ" value={stats.leads.active} max={stats.leads.total} color="bg-blue-400" href="/ma/leads?status=active" />
+                <FunnelBar label="コンバート済み" value={stats.leads.converted} max={stats.leads.total} color="bg-success" href="/ma/leads?status=converted" />
+                <FunnelBar label="オプトアウト" value={stats.leads.optedOut} max={stats.leads.total} color="bg-danger/70" href="/ma/leads?optedOut=true" />
               </div>
             </LightningCardBody>
           </LightningCard>

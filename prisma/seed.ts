@@ -74,7 +74,17 @@ async function main() {
   await prisma.activityRelation.deleteMany();
   await prisma.opportunityContactRole.deleteMany();
   await prisma.case.deleteMany();
+  // New Lead MA models cleanup
+  await prisma.leadProgramEnrollment.deleteMany();
+  await prisma.leadFormSubmission.deleteMany();
+  await prisma.leadEmailRecipient.deleteMany();
+  await prisma.leadListMembership.deleteMany();
+  await prisma.leadEngagementActivity.deleteMany();
   await prisma.lead.deleteMany();
+  // ObjectDefinition cleanup (keep for upsert)
+  await prisma.fieldDefinition.deleteMany();
+  await prisma.customObjectRecord.deleteMany();
+  await prisma.objectDefinition.deleteMany();
 
   // Profiles
   const [adminProfile, managerProfile, salesProfile] = await Promise.all([
@@ -1381,6 +1391,113 @@ async function main() {
     prisma.engagementProgramNode.create({ data: { programId: program.id, type: "wait", label: "3日待機", config: { days: 3 } as object, positionX: 100, positionY: 150 } }),
     prisma.engagementProgramNode.create({ data: { programId: program.id, type: "email", label: "製品紹介メール送信", config: { delay: 3 } as object, positionX: 100, positionY: 250 } }),
   ]);
+
+  // ===================== Standard ObjectDefinitions =====================
+  console.log("📦 標準オブジェクト定義を登録中...");
+
+  const standardObjects = [
+    { apiName: "Lead", label: "リード", pluralLabel: "リード", category: "CRM", description: "CRM/MA共通のリードオブジェクト", enableActivities: true, enableNotes: true, enableFiles: false, enableHistory: true },
+    { apiName: "Account", label: "顧客企業", pluralLabel: "顧客企業", category: "CRM", description: "顧客・取引先企業を管理します", enableActivities: true, enableNotes: true, enableFiles: true, enableHistory: true },
+    { apiName: "Contact", label: "担当者", pluralLabel: "担当者", category: "CRM", description: "取引先担当者を管理します", enableActivities: true, enableNotes: true, enableFiles: false, enableHistory: true },
+    { apiName: "Deal", label: "商談", pluralLabel: "商談", category: "CRM", description: "営業商談・案件を管理します", enableActivities: true, enableNotes: true, enableFiles: true, enableHistory: true },
+    { apiName: "Campaign", label: "キャンペーン", pluralLabel: "キャンペーン", category: "CRM", description: "マーケティングキャンペーンを管理します", enableActivities: false, enableNotes: true, enableFiles: false, enableHistory: true },
+    { apiName: "Case", label: "ケース", pluralLabel: "ケース", category: "CRM", description: "サポートケース・問い合わせを管理します", enableActivities: true, enableNotes: true, enableFiles: true, enableHistory: true },
+    { apiName: "Product", label: "商品", pluralLabel: "商品", category: "CRM", description: "製品・サービスのカタログを管理します", enableActivities: false, enableNotes: true, enableFiles: false, enableHistory: true },
+    { apiName: "Task", label: "タスク", pluralLabel: "タスク", category: "CRM", description: "ToDo・タスクを管理します", enableActivities: false, enableNotes: false, enableFiles: false, enableHistory: false },
+    { apiName: "Activity", label: "活動", pluralLabel: "活動", category: "CRM", description: "コール・メール・訪問などの活動ログ", enableActivities: false, enableNotes: false, enableFiles: false, enableHistory: false },
+    { apiName: "Quote", label: "見積", pluralLabel: "見積", category: "CRM", description: "商談に紐づく見積を管理します", enableActivities: false, enableNotes: true, enableFiles: true, enableHistory: true },
+    { apiName: "Contract", label: "契約", pluralLabel: "契約", category: "CRM", description: "顧客との契約を管理します", enableActivities: false, enableNotes: true, enableFiles: true, enableHistory: true },
+    { apiName: "Order", label: "注文", pluralLabel: "注文", category: "CRM", description: "受注・注文を管理します", enableActivities: false, enableNotes: true, enableFiles: false, enableHistory: true },
+    { apiName: "PriceBook", label: "価格表", pluralLabel: "価格表", category: "CRM", description: "商品の価格表を管理します", enableActivities: false, enableNotes: false, enableFiles: false, enableHistory: false },
+    { apiName: "MarketingEmail", label: "マーケティングメール", pluralLabel: "マーケティングメール", category: "MA", description: "MAメール配信を管理します", enableActivities: false, enableNotes: false, enableFiles: false, enableHistory: true },
+    { apiName: "MarketingForm", label: "フォーム", pluralLabel: "フォーム", category: "MA", description: "問い合わせ・資料請求フォームを管理します", enableActivities: false, enableNotes: false, enableFiles: false, enableHistory: true },
+    { apiName: "LandingPage", label: "ランディングページ", pluralLabel: "ランディングページ", category: "MA", description: "MAランディングページを管理します", enableActivities: false, enableNotes: false, enableFiles: false, enableHistory: false },
+    { apiName: "EngagementProgram", label: "Engagement Program", pluralLabel: "Engagement Programs", category: "MA", description: "ナーチャリングプログラムを管理します", enableActivities: false, enableNotes: false, enableFiles: false, enableHistory: true },
+  ];
+
+  for (const obj of standardObjects) {
+    await prisma.objectDefinition.upsert({
+      where: { apiName: obj.apiName },
+      update: {
+        label: obj.label,
+        pluralLabel: obj.pluralLabel,
+        category: obj.category,
+        description: obj.description,
+        objectType: "STANDARD",
+        isActive: true,
+        isSearchable: true,
+        isReportable: true,
+        isAuditable: true,
+        enableActivities: obj.enableActivities,
+        enableNotes: obj.enableNotes,
+        enableFiles: obj.enableFiles,
+        enableHistory: obj.enableHistory,
+      },
+      create: {
+        apiName: obj.apiName,
+        label: obj.label,
+        pluralLabel: obj.pluralLabel,
+        category: obj.category,
+        description: obj.description,
+        objectType: "STANDARD",
+        isActive: true,
+        isSearchable: true,
+        isReportable: true,
+        isAuditable: true,
+        enableActivities: obj.enableActivities,
+        enableNotes: obj.enableNotes,
+        enableFiles: obj.enableFiles,
+        enableHistory: obj.enableHistory,
+        createdById: adminUser.id,
+      },
+    });
+  }
+
+  // Lead FieldDefinitions
+  const leadObjDef = await prisma.objectDefinition.findUnique({ where: { apiName: "Lead" } });
+  if (leadObjDef) {
+    const leadFields = [
+      { apiName: "fullName", label: "氏名", fieldType: "TEXT", isRequired: true, sortOrder: 1 },
+      { apiName: "email", label: "メール", fieldType: "EMAIL", isRequired: false, sortOrder: 2 },
+      { apiName: "companyName", label: "会社名", fieldType: "TEXT", isRequired: false, sortOrder: 3 },
+      { apiName: "title", label: "役職", fieldType: "TEXT", isRequired: false, sortOrder: 4 },
+      { apiName: "phone", label: "電話番号", fieldType: "PHONE", isRequired: false, sortOrder: 5 },
+      { apiName: "status", label: "ステータス", fieldType: "PICKLIST", isRequired: true, sortOrder: 6, options: { values: ["NEW", "WORKING", "NURTURING", "MQL", "SQL", "QUALIFIED", "CONVERTED", "UNSUBSCRIBED"] } },
+      { apiName: "lifecycleStage", label: "ライフサイクルステージ", fieldType: "PICKLIST", isRequired: false, sortOrder: 7, options: { values: ["VISITOR", "LEAD", "MQL", "SQL", "OPPORTUNITY", "CUSTOMER"] } },
+      { apiName: "rating", label: "評価", fieldType: "PICKLIST", isRequired: false, sortOrder: 8, options: { values: ["HOT", "WARM", "COLD"] } },
+      { apiName: "score", label: "スコア", fieldType: "NUMBER", isRequired: false, sortOrder: 9 },
+      { apiName: "grade", label: "グレード", fieldType: "TEXT", isRequired: false, sortOrder: 10 },
+      { apiName: "consentStatus", label: "同意状態", fieldType: "PICKLIST", isRequired: false, sortOrder: 11, options: { values: ["UNKNOWN", "OPTED_IN", "OPTED_OUT"] } },
+      { apiName: "doNotEmail", label: "メール配信停止", fieldType: "BOOLEAN", isRequired: false, sortOrder: 12 },
+      { apiName: "optedOut", label: "オプトアウト", fieldType: "BOOLEAN", isRequired: false, sortOrder: 13 },
+      { apiName: "emailBounced", label: "メールバウンス", fieldType: "BOOLEAN", isRequired: false, sortOrder: 14 },
+      { apiName: "source", label: "参照元", fieldType: "TEXT", isRequired: false, sortOrder: 15 },
+      { apiName: "industry", label: "業種", fieldType: "TEXT", isRequired: false, sortOrder: 16 },
+      { apiName: "website", label: "ウェブサイト", fieldType: "URL", isRequired: false, sortOrder: 17 },
+      { apiName: "assignedUserId", label: "担当者", fieldType: "LOOKUP", isRequired: false, sortOrder: 18 },
+      { apiName: "ownerId", label: "所有者", fieldType: "LOOKUP", isRequired: false, sortOrder: 19 },
+      { apiName: "crmContactId", label: "CRM担当者", fieldType: "LOOKUP", isRequired: false, sortOrder: 20 },
+      { apiName: "convertedAt", label: "変換日時", fieldType: "DATETIME", isRequired: false, sortOrder: 21 },
+      { apiName: "lastActivityAt", label: "最終活動日時", fieldType: "DATETIME", isRequired: false, sortOrder: 22 },
+    ];
+
+    for (const field of leadFields) {
+      await prisma.fieldDefinition.upsert({
+        where: { objectDefinitionId_apiName: { objectDefinitionId: leadObjDef.id, apiName: field.apiName } },
+        update: { label: field.label, fieldType: field.fieldType, isRequired: field.isRequired, isSystem: true, sortOrder: field.sortOrder, options: (field as any).options ?? undefined },
+        create: {
+          objectDefinitionId: leadObjDef.id,
+          apiName: field.apiName,
+          label: field.label,
+          fieldType: field.fieldType,
+          isRequired: field.isRequired,
+          isSystem: true,
+          sortOrder: field.sortOrder,
+          options: (field as any).options ?? undefined,
+        },
+      });
+    }
+  }
 
   console.log("✅ シードデータの投入が完了しました");
 }

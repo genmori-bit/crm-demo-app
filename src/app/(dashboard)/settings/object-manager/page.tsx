@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useToast } from "@/components/ui/toast";
 
 interface ObjectDef {
   id: string;
@@ -12,36 +11,45 @@ interface ObjectDef {
   description: string | null;
   isCustom: boolean;
   isActive: boolean;
+  objectType: string;
+  category: string;
   _count: { fields: number; records: number };
 }
 
 const STANDARD_OBJECTS = [
-  { label: "企業 (Company)", apiName: "Company", href: "/companies" },
-  { label: "担当者 (Contact)", apiName: "Contact", href: "/contacts" },
-  { label: "商談 (Deal)", apiName: "Deal", href: "/deals" },
-  { label: "リード (Lead)", apiName: "Lead", href: "/leads" },
-  { label: "ケース (Case)", apiName: "Case", href: "/cases" },
-  { label: "キャンペーン (Campaign)", apiName: "Campaign", href: "/campaigns" },
-  { label: "製品 (Product)", apiName: "Product", href: "/products" },
-  { label: "見積 (Quote)", apiName: "Quote", href: "#" },
-  { label: "契約 (Contract)", apiName: "Contract", href: "#" },
-  { label: "受注 (Order)", apiName: "Order", href: "#" },
+  { label: "リード", apiName: "Lead", category: "CRM / MA" },
+  { label: "顧客企業", apiName: "Account", category: "CRM" },
+  { label: "担当者", apiName: "Contact", category: "CRM" },
+  { label: "商談", apiName: "Deal", category: "CRM" },
+  { label: "ケース", apiName: "Case", category: "CRM" },
+  { label: "キャンペーン", apiName: "Campaign", category: "CRM / MA" },
+  { label: "商品", apiName: "Product", category: "CRM" },
+  { label: "タスク", apiName: "Task", category: "CRM" },
+  { label: "活動", apiName: "Activity", category: "CRM / MA" },
+  { label: "見積", apiName: "Quote", category: "CRM" },
+  { label: "契約", apiName: "Contract", category: "CRM" },
+  { label: "注文", apiName: "Order", category: "CRM" },
+  { label: "価格表", apiName: "PriceBook", category: "CRM" },
+  { label: "マーケティングメール", apiName: "MarketingEmail", category: "MA" },
+  { label: "フォーム", apiName: "MarketingForm", category: "MA" },
+  { label: "ランディングページ", apiName: "LandingPage", category: "MA" },
+  { label: "Engagement Program", apiName: "EngagementProgram", category: "MA" },
 ];
 
 export default function ObjectManagerPage() {
-  const showToast = useToast();
   const [customObjects, setCustomObjects] = useState<ObjectDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"standard" | "custom">("standard");
 
-  const load = () => {
+  useEffect(() => {
     setLoading(true);
     fetch("/api/object-manager")
       .then((r) => r.json())
-      .then((data) => { setCustomObjects(Array.isArray(data) ? data : []); setLoading(false); });
-  };
-
-  useEffect(() => { load(); }, []);
+      .then((data) => {
+        setCustomObjects(Array.isArray(data) ? data.filter((o: ObjectDef) => o.isCustom) : []);
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -58,7 +66,7 @@ export default function ObjectManagerPage() {
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t ? "border-primary-500 text-primary-600" : "border-transparent text-sf-weak hover:text-sf-text"}`}
           >
-            {t === "standard" ? "標準オブジェクト" : "カスタムオブジェクト"}
+            {t === "standard" ? `標準オブジェクト (${STANDARD_OBJECTS.length})` : "カスタムオブジェクト"}
             {t === "custom" && ` (${customObjects.length})`}
           </button>
         ))}
@@ -81,17 +89,18 @@ export default function ObjectManagerPage() {
             {STANDARD_OBJECTS.map((obj) => (
               <Link
                 key={obj.apiName}
-                href={obj.href}
+                href={`/settings/object-manager/${obj.apiName}`}
                 className="bg-sf-surface rounded-sf shadow-card border border-sf-border p-4 hover:border-primary-300 hover:shadow-md transition-all flex items-center gap-3"
               >
                 <div className="w-10 h-10 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center text-sm font-bold">
                   {obj.label[0]}
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-sf-text">{obj.label.split(" (")[0]}</p>
-                  <p className="text-2xs text-sf-weak">{obj.apiName}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-sf-text">{obj.label}</p>
+                  <p className="text-2xs text-sf-weak font-mono">{obj.apiName}</p>
+                  <p className="text-2xs text-sf-weak">{obj.category}</p>
                 </div>
-                <svg className="w-4 h-4 text-sf-weak ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-sf-weak shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
@@ -116,7 +125,7 @@ export default function ObjectManagerPage() {
                 {customObjects.map((obj) => (
                   <Link
                     key={obj.id}
-                    href={`/settings/object-manager/${obj.id}`}
+                    href={`/settings/object-manager/${obj.apiName}`}
                     className="bg-sf-surface rounded-sf shadow-card border border-sf-border p-4 hover:border-primary-300 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start gap-3">
@@ -125,7 +134,7 @@ export default function ObjectManagerPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-sf-text">{obj.label}</p>
-                        <p className="text-2xs text-sf-weak">{obj.apiName}</p>
+                        <p className="text-2xs text-sf-weak font-mono">{obj.apiName}</p>
                         {obj.description && <p className="text-xs text-sf-weak mt-1 truncate">{obj.description}</p>}
                       </div>
                       {!obj.isActive && (

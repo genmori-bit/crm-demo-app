@@ -189,8 +189,8 @@ export default function LeadDetailPage() {
           )}
           {lead.prospect && (
             <div className="bg-sf-surface rounded-sf shadow-card border border-sf-border p-4">
-              <h3 className="text-xs font-semibold text-sf-weak mb-2">MAプロスペクト</h3>
-              <Link href={`/ma/prospects/${lead.prospect.id}`} className="text-sm text-primary-600 hover:underline">{lead.prospect.email}</Link>
+              <h3 className="text-xs font-semibold text-sf-weak mb-2">MAリード</h3>
+              <Link href={`/ma/leads/${lead.prospect.id}`} className="text-sm text-primary-600 hover:underline">{lead.prospect.email}</Link>
             </div>
           )}
         </div>

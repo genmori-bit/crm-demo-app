@@ -94,13 +94,13 @@ export default function EngagementProgramDetailPage() {
 
           {/* Enrollments */}
           <div className="bg-sf-surface border border-sf-border rounded-sf p-4">
-            <h2 className="text-sm font-semibold text-sf-text mb-3">登録プロスペクト ({program._count.enrollments})</h2>
+            <h2 className="text-sm font-semibold text-sf-text mb-3">登録リード ({program._count.enrollments})</h2>
             {program.enrollments.length === 0 ? (
-              <p className="text-sm text-sf-weak">登録されているプロスペクトがありません</p>
+              <p className="text-sm text-sf-weak">登録されているリードがありません</p>
             ) : (
               <table className="w-full text-xs">
                 <thead><tr className="border-b border-sf-border">
-                  <th className="text-left py-2 text-sf-weak">プロスペクト</th>
+                  <th className="text-left py-2 text-sf-weak">リード</th>
                   <th className="text-left py-2 text-sf-weak">状態</th>
                   <th className="text-left py-2 text-sf-weak">登録日</th>
                 </tr></thead>
@@ -108,7 +108,7 @@ export default function EngagementProgramDetailPage() {
                   {program.enrollments.map((e, i) => (
                     <tr key={i}>
                       <td className="py-2">
-                        <Link href={`/ma/prospects/${e.prospect.id}`} className="text-primary-600 hover:underline">{e.prospect.email}</Link>
+                        <Link href={`/ma/leads/${e.prospect.id}`} className="text-primary-600 hover:underline">{e.prospect.email}</Link>
                       </td>
                       <td className="py-2 text-sf-weak">{e.status}</td>
                       <td className="py-2 text-sf-weak">{new Date(e.enrolledAt).toLocaleDateString("ja-JP")}</td>
@@ -124,7 +124,7 @@ export default function EngagementProgramDetailPage() {
           <h2 className="text-sm font-semibold text-sf-text mb-3">統計</h2>
           <div className="text-center border-b border-sf-border pb-3 mb-3">
             <div className="text-3xl font-bold text-sf-text">{program._count.enrollments}</div>
-            <div className="text-xs text-sf-weak">登録プロスペクト数</div>
+            <div className="text-xs text-sf-weak">登録リード数</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-bold text-sf-text">{program.nodes.length}</div>
