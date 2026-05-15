@@ -54,6 +54,13 @@ const SECTIONS: SettingSection[] = [
     ],
   },
   {
+    title: "カスタマイズ",
+    color: "bg-orange-50 text-orange-600",
+    items: [
+      { href: "/settings/object-manager", label: "オブジェクトマネージャー", description: "標準・カスタムオブジェクトとフィールドを管理します", icon: <Icon path="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />, keywords: ["object", "field", "custom", "オブジェクト", "フィールド", "カスタム"] },
+    ],
+  },
+  {
     title: "データ管理",
     color: "bg-teal-50 text-teal-600",
     items: [
