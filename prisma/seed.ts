@@ -86,6 +86,18 @@ async function main() {
   await prisma.customObjectRecord.deleteMany();
   await prisma.objectDefinition.deleteMany();
 
+  // Account 360 cleanup
+  await prisma.pageComponentInstance.deleteMany();
+  await prisma.recordPageAssignment.deleteMany();
+  await prisma.recordPageVersion.deleteMany();
+  await prisma.recordPageDefinition.deleteMany();
+  await prisma.accountInsight.deleteMany();
+  await prisma.accountHealthSnapshot.deleteMany();
+  await prisma.accountPlan.deleteMany();
+  await prisma.accountRelationship.deleteMany();
+  await prisma.accountStakeholder.deleteMany();
+  await prisma.accountTeamMember.deleteMany();
+
   // Profiles
   const [adminProfile, managerProfile, salesProfile] = await Promise.all([
     prisma.profile.create({
@@ -184,7 +196,7 @@ async function main() {
 
   // Users
   const hashedPassword = await bcrypt.hash("password123", 12);
-  const [adminUser] = await Promise.all([
+  const users = await Promise.all([
     prisma.user.create({
       data: { email: "admin@example.com", name: "管理者", passwordHash: hashedPassword, role: "ADMIN", profileId: adminProfile.id, department: "システム管理", title: "システム管理者" },
     }),
@@ -201,6 +213,7 @@ async function main() {
       data: { email: "sales3@example.com", name: "鈴木 営業次郎", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業1課", title: "営業担当" },
     }),
   ]);
+  const [adminUser] = users;
 
   // Tags
   const tags = await Promise.all([
@@ -1498,6 +1511,203 @@ async function main() {
       });
     }
   }
+
+  // ===================== Account 360 Seed Data =====================
+  console.log("🏢 Account 360 シードデータを投入中...");
+
+  // Update companies with rich Account 360 fields
+  const account360Industries = ["製造業", "IT・ソフトウェア", "金融・保険", "商社・流通", "不動産", "医療・ヘルスケア", "教育", "小売・EC", "建設", "コンサルティング"];
+  const tiers = ["STRATEGIC", "ENTERPRISE", "MID_MARKET", "SMB"];
+  const lifecycleStages = ["TARGET", "LEAD", "OPPORTUNITY", "CUSTOMER", "EXPANSION"];
+
+  for (let i = 0; i < companies.length; i++) {
+    const company = companies[i];
+    const tier = tiers[i % tiers.length];
+    const arr = tier === "STRATEGIC" ? Math.floor(Math.random() * 50000000) + 10000000
+      : tier === "ENTERPRISE" ? Math.floor(Math.random() * 10000000) + 1000000
+      : tier === "MID_MARKET" ? Math.floor(Math.random() * 1000000) + 100000
+      : Math.floor(Math.random() * 100000) + 10000;
+
+    await prisma.company.update({
+      where: { id: company.id },
+      data: {
+        tier,
+        lifecycleStage: lifecycleStages[i % lifecycleStages.length],
+        domain: `company${i}.co.jp`,
+        businessSummary: `${company.companyName}は${account360Industries[i % account360Industries.length]}業界のリーディングカンパニーです。`,
+        painPoints: ["コスト削減", "業務効率化", "デジタル変革"],
+        objectives: ["売上20%向上", "コスト10%削減", "顧客満足度向上"],
+        technologies: ["Salesforce", "AWS", "Slack"],
+        arr: arr,
+        mrr: Math.floor(arr / 12),
+        renewalDate: new Date(Date.now() + Math.random() * 365 * 24 * 60 * 60 * 1000),
+        openPipelineAmount: Math.floor(Math.random() * 5000000),
+        wonAmount: Math.floor(Math.random() * 10000000),
+      },
+    });
+  }
+
+  // AccountTeamMember seed
+  const teamRoles = ["OWNER", "ACCOUNT_MANAGER", "CSM", "SALES_REP", "EXECUTIVE_SPONSOR"];
+  for (let i = 0; i < Math.min(companies.length, 20); i++) {
+    const company = companies[i];
+    const numMembers = Math.floor(Math.random() * 3) + 1;
+    for (let j = 0; j < numMembers; j++) {
+      const userIndex = (i + j) % users.length;
+      await prisma.accountTeamMember.upsert({
+        where: { companyId_userId: { companyId: company.id, userId: users[userIndex].id } },
+        create: {
+          companyId: company.id,
+          userId: users[userIndex].id,
+          role: teamRoles[j % teamRoles.length],
+          isPrimary: j === 0,
+        },
+        update: {},
+      });
+    }
+  }
+
+  // AccountInsight seed
+  const insightTemplates = [
+    { type: "RISK", title: "30日以上活動がありません", body: "最後の活動から30日以上が経過しています。早急にコンタクトを取ることをお勧めします。", severity: "HIGH", source: "SYSTEM", actionLabel: "活動を記録", actionUrl: "/activities/new" },
+    { type: "OPPORTUNITY", title: "高スコアリードが存在します", body: "スコア70以上のリードが複数あります。商談に転換するチャンスです。", severity: "MEDIUM", source: "MA", actionLabel: undefined, actionUrl: undefined },
+    { type: "RENEWAL", title: "契約更新予定日が近づいています", body: "契約の更新期限まで60日を切っています。更新提案の準備を開始してください。", severity: "HIGH", source: "CRM", actionLabel: "契約を確認", actionUrl: undefined },
+    { type: "SUPPORT", title: "未解決のケースがあります", body: "優先度「高」以上の未解決ケースが存在します。サポートチームと連携してください。", severity: "MEDIUM", source: "CRM", actionLabel: undefined, actionUrl: undefined },
+    { type: "ENGAGEMENT", title: "キャンペーン反応後に商談化していません", body: "最近のキャンペーンに反応しましたが、商談が作成されていません。", severity: "LOW", source: "MA", actionLabel: "商談を作成", actionUrl: undefined },
+    { type: "DATA_QUALITY", title: "担当者情報が不足しています", body: "主担当者のメールアドレスまたは電話番号が未入力です。", severity: "LOW", source: "SYSTEM", actionLabel: undefined, actionUrl: undefined },
+  ];
+
+  for (let i = 0; i < Math.min(companies.length, 15); i++) {
+    const company = companies[i];
+    const count = Math.floor(Math.random() * 3) + 2;
+    for (let j = 0; j < count; j++) {
+      const template = insightTemplates[j % insightTemplates.length];
+      await prisma.accountInsight.create({
+        data: {
+          companyId: company.id,
+          type: template.type,
+          title: template.title,
+          body: template.body,
+          severity: template.severity,
+          source: template.source,
+          actionLabel: template.actionLabel ?? null,
+          actionUrl: template.actionUrl ?? null,
+          isDismissed: false,
+        },
+      });
+    }
+  }
+
+  // AccountHealthSnapshot seed
+  for (const company of companies.slice(0, 20)) {
+    const baseScore = Math.floor(Math.random() * 60) + 30;
+    for (let month = 0; month < 6; month++) {
+      const score = Math.min(100, Math.max(0, baseScore + Math.floor(Math.random() * 20) - 10));
+      const measuredAt = new Date();
+      measuredAt.setMonth(measuredAt.getMonth() - month);
+      await prisma.accountHealthSnapshot.create({
+        data: {
+          companyId: company.id,
+          healthScore: score,
+          fitScore: Math.floor(Math.random() * 40) + 60,
+          engagementScore: Math.floor(Math.random() * 60) + 20,
+          riskLevel: score >= 70 ? "LOW" : score >= 50 ? "MEDIUM" : score >= 30 ? "HIGH" : "CRITICAL",
+          reason: { factors: ["activity_score", "deal_velocity", "support_satisfaction"] },
+          measuredAt,
+        },
+      });
+    }
+    // Update company healthScore
+    await prisma.company.update({
+      where: { id: company.id },
+      data: { healthScore: baseScore },
+    });
+  }
+
+  // AccountPlan seed
+  const currentYear = new Date().getFullYear();
+  for (const company of companies.slice(0, 8)) {
+    await prisma.accountPlan.create({
+      data: {
+        companyId: company.id,
+        name: `${currentYear}年度 アカウントプラン`,
+        fiscalYear: String(currentYear),
+        status: "ACTIVE",
+        summary: `${company.companyName}との関係強化と収益拡大を目指す年度計画です。`,
+        businessObjectives: ["ARR20%向上", "プロダクト導入範囲拡大", "C-Level関係の強化"],
+        keyInitiatives: ["四半期レビュー実施", "エグゼクティブスポンサー設定", "カスタマーサクセス強化"],
+        risks: ["競合他社の提案", "予算削減リスク", "担当者変更"],
+        expansionOpportunities: ["追加モジュール導入", "部門展開", "グループ展開"],
+        nextActions: ["来月のQBR設定", "CSMとのキックオフ", "更新提案書作成"],
+        ownerId: null,
+      },
+    });
+  }
+
+  // AccountRelationship seed
+  if (companies.length >= 3) {
+    await prisma.accountRelationship.createMany({
+      data: [
+        { sourceCompanyId: companies[0].id, targetCompanyId: companies[1].id, relationshipType: "SUBSIDIARY", description: "子会社" },
+        { sourceCompanyId: companies[0].id, targetCompanyId: companies[2].id, relationshipType: "PARTNER", description: "パートナー企業" },
+      ],
+      skipDuplicates: true,
+    });
+  }
+
+  // RecordPageDefinition seed
+  const companyPage = await prisma.recordPageDefinition.upsert({
+    where: { objectApiName_apiName: { objectApiName: "Company", apiName: "company_360_default" } },
+    create: {
+      objectApiName: "Company",
+      apiName: "company_360_default",
+      label: "取引先360",
+      description: "取引先の全情報を一画面で確認できる標準ページ",
+      pageType: "RECORD_PAGE",
+      template: "TABS_WITH_RIGHT_SIDEBAR",
+      status: "ACTIVE",
+      isDefault: true,
+      layout: {},
+    },
+    update: {},
+  });
+
+  // Add default components to the Company page
+  const defaultComponents = [
+    { componentType: "RECORD_HEADER", region: "header", sortOrder: 0, config: {} },
+    { componentType: "HIGHLIGHT_PANEL", region: "header", sortOrder: 1, config: {} },
+    { componentType: "FIELD_SECTION", region: "tab:overview", sortOrder: 0, config: { title: "企業概要", columns: 2 } },
+    { componentType: "RELATED_LIST", region: "tab:overview", sortOrder: 1, config: { title: "進行中商談", relatedObject: "deals", maxRows: 5 } },
+    { componentType: "RELATED_LIST", region: "tab:overview", sortOrder: 2, config: { title: "担当者", relatedObject: "contacts", maxRows: 5 } },
+    { componentType: "FIELD_SECTION", region: "tab:details", sortOrder: 0, config: { title: "基本情報", columns: 2 } },
+    { componentType: "FIELD_SECTION", region: "tab:details", sortOrder: 1, config: { title: "企業属性", columns: 2 } },
+    { componentType: "FIELD_SECTION", region: "tab:details", sortOrder: 2, config: { title: "所在地", columns: 1 } },
+    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 0, config: { title: "担当者", relatedObject: "contacts", maxRows: 10 } },
+    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 1, config: { title: "商談", relatedObject: "deals", maxRows: 10 } },
+    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 2, config: { title: "ケース", relatedObject: "cases", maxRows: 10 } },
+    { componentType: "ACTIVITY_TIMELINE", region: "tab:activity", sortOrder: 0, config: {} },
+    { componentType: "ACCOUNT_HEALTH", region: "sidebar", sortOrder: 0, config: {} },
+    { componentType: "ACCOUNT_TEAM", region: "sidebar", sortOrder: 1, config: {} },
+    { componentType: "TASK_LIST", region: "sidebar", sortOrder: 2, config: { title: "次のタスク", maxRows: 3 } },
+    { componentType: "INSIGHT_CARD", region: "sidebar", sortOrder: 3, config: {} },
+  ];
+
+  for (const comp of defaultComponents) {
+    await prisma.pageComponentInstance.create({
+      data: { recordPageId: companyPage.id, ...comp },
+    });
+  }
+
+  // Create a default assignment for the Company page
+  await prisma.recordPageAssignment.create({
+    data: {
+      recordPageId: companyPage.id,
+      objectApiName: "Company",
+      formFactor: "BOTH",
+      priority: 0,
+      isActive: true,
+    },
+  });
 
   console.log("✅ シードデータの投入が完了しました");
 }

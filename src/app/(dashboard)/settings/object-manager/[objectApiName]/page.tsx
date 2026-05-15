@@ -277,6 +277,31 @@ export default function ObjectDetailPage() {
           </div>
         </div>
 
+        {/* Record Pages */}
+        <div className="bg-sf-surface rounded-sf shadow-card border border-sf-border p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-sf-text">レコードページ</h2>
+            <Link
+              href={`/settings/object-manager/${objectApiName}/record-pages`}
+              className="text-xs text-primary-600 hover:underline font-medium"
+            >
+              すべて表示 →
+            </Link>
+          </div>
+          <p className="text-xs text-sf-weak mb-3">
+            このオブジェクトのレコードページをLightning App Builderスタイルで管理します。
+          </p>
+          <Link
+            href={`/settings/object-manager/${objectApiName}/record-pages`}
+            className="inline-flex items-center gap-1.5 text-xs text-primary-600 hover:underline"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+            </svg>
+            レコードページを管理
+          </Link>
+        </div>
+
         {/* Fields */}
         <div className="bg-sf-surface rounded-sf shadow-card border border-sf-border p-5">
           <div className="flex items-center justify-between mb-4">

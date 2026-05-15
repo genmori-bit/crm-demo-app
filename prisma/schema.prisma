@@ -41,6 +41,7 @@ model User {
   teamMemberships          TeamMember[]
   loginHistory             LoginHistory[]
   sentInvitations          UserInvitation[]          @relation("InvitedBy")
+  accountTeamMemberships   AccountTeamMember[]
 }
 
 model Role {
@@ -232,6 +233,33 @@ model Company {
   nextTaskDueAt     DateTime?
   healthScore       Int?
   customFields      Json      @default("{}")
+  legalName              String?
+  displayName            String?
+  domain                 String?
+  mainEmail              String?
+  subIndustry            String?
+  capital                Float?
+  foundedYear            Int?
+  stockMarket            String?
+  stockSymbol            String?
+  corporateNumber        String?
+  invoiceRegistrationNumber String?
+  tier                   String?
+  lifecycleStage         String?
+  accountManagerId       String?
+  customerSuccessManagerId String?
+  businessSummary        String?
+  painPoints             Json?
+  objectives             Json?
+  competitors            Json?
+  technologies           Json?
+  openPipelineAmount     Float     @default(0)
+  wonAmount              Float     @default(0)
+  activeContractValue    Float     @default(0)
+  arr                    Float?
+  mrr                    Float?
+  renewalDate            DateTime?
+  lastEngagementAt       DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
@@ -250,12 +278,208 @@ model Company {
   campaignMembers CampaignMember[]
   prospects     Prospect[]
   subscriptions Subscription[]
+  accountTeamMembers  AccountTeamMember[]
+  accountPlans        AccountPlan[]
+  sourceRelationships AccountRelationship[] @relation("SourceAccount")
+  targetRelationships AccountRelationship[] @relation("TargetAccount")
+  accountStakeholders AccountStakeholder[]
+  accountHealthSnapshots AccountHealthSnapshot[]
+  accountInsights     AccountInsight[]
 
   @@index([status])
   @@index([deletedAt])
   @@index([companyName])
   @@index([ownerId])
   @@index([parentCompanyId])
+  @@index([domain])
+  @@index([tier])
+  @@index([lastActivityAt])
+}
+
+model AccountTeamMember {
+  id          String   @id @default(cuid())
+  companyId   String
+  userId      String
+  role        String   @default("SALES_REP")
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([companyId])
+  @@index([userId])
+}
+
+model AccountPlan {
+  id                     String   @id @default(cuid())
+  companyId              String
+  name                   String
+  fiscalYear             String
+  status                 String   @default("DRAFT")
+  summary                String?
+  businessObjectives     Json?
+  keyInitiatives         Json?
+  risks                  Json?
+  expansionOpportunities Json?
+  nextActions            Json?
+  ownerId                String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  company                Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+model AccountRelationship {
+  id               String   @id @default(cuid())
+  sourceCompanyId  String
+  targetCompanyId  String
+  relationshipType String   @default("RELATED")
+  description      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  sourceCompany    Company  @relation("SourceAccount", fields: [sourceCompanyId], references: [id], onDelete: Cascade)
+  targetCompany    Company  @relation("TargetAccount", fields: [targetCompanyId], references: [id], onDelete: Cascade)
+
+  @@index([sourceCompanyId])
+  @@index([targetCompanyId])
+}
+
+model AccountStakeholder {
+  id             String   @id @default(cuid())
+  companyId      String
+  contactId      String
+  influenceLevel String   @default("MEDIUM")
+  attitude       String   @default("UNKNOWN")
+  decisionRole   String   @default("OTHER")
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact        Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, contactId])
+  @@index([companyId])
+}
+
+model AccountHealthSnapshot {
+  id              String   @id @default(cuid())
+  companyId       String
+  healthScore     Int
+  fitScore        Int?
+  engagementScore Int?
+  riskLevel       String   @default("LOW")
+  reason          Json?
+  measuredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([measuredAt])
+}
+
+model AccountInsight {
+  id          String   @id @default(cuid())
+  companyId   String
+  type        String   @default("CUSTOM")
+  title       String
+  body        String
+  severity    String   @default("INFO")
+  source      String   @default("SYSTEM")
+  actionLabel String?
+  actionUrl   String?
+  isDismissed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([isDismissed])
+}
+
+model RecordPageDefinition {
+  id            String   @id @default(cuid())
+  objectApiName String
+  apiName       String
+  label         String
+  description   String?
+  pageType      String   @default("RECORD_PAGE")
+  template      String   @default("TABS_WITH_RIGHT_SIDEBAR")
+  status        String   @default("DRAFT")
+  layout        Json     @default("{}")
+  version       Int      @default(1)
+  isDefault     Boolean  @default(false)
+  createdById   String?
+  updatedById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  components    PageComponentInstance[]
+  assignments   RecordPageAssignment[]
+  pageVersions  RecordPageVersion[]
+
+  @@unique([objectApiName, apiName])
+  @@index([objectApiName])
+  @@index([status])
+}
+
+model RecordPageVersion {
+  id            String   @id @default(cuid())
+  recordPageId  String
+  version       Int
+  layout        Json
+  publishedById String?
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  recordPage    RecordPageDefinition @relation(fields: [recordPageId], references: [id], onDelete: Cascade)
+
+  @@index([recordPageId])
+}
+
+model RecordPageAssignment {
+  id            String   @id @default(cuid())
+  recordPageId  String
+  objectApiName String
+  appId         String?
+  recordTypeId  String?
+  profileId     String?
+  formFactor    String   @default("BOTH")
+  priority      Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  recordPage    RecordPageDefinition @relation(fields: [recordPageId], references: [id], onDelete: Cascade)
+
+  @@index([objectApiName])
+  @@index([recordPageId])
+}
+
+model PageComponentInstance {
+  id              String   @id @default(cuid())
+  recordPageId    String
+  componentType   String
+  region          String   @default("main")
+  sortOrder       Int      @default(0)
+  config          Json     @default("{}")
+  visibilityRules Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  recordPage      RecordPageDefinition @relation(fields: [recordPageId], references: [id], onDelete: Cascade)
+
+  @@index([recordPageId])
+  @@index([region])
 }
 
 model Contact {
@@ -290,6 +514,7 @@ model Contact {
   campaignMembers      CampaignMember[]
   cases                Case[]
   activityRelations    ActivityRelation[]
+  accountStakeholders  AccountStakeholder[]
 
   @@index([companyId])
   @@index([email])

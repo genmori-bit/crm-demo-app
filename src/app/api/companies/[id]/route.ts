@@ -11,25 +11,93 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const company = await prisma.company.findUnique({
-    where: { id },
-    include: {
-      contacts: { orderBy: [{ isPrimary: "desc" }, { fullName: "asc" }] },
-      deals: { orderBy: { createdAt: "desc" } },
-      activities: {
-        orderBy: { activityDate: "desc" },
-        include: { contact: { select: { fullName: true } } },
-        take: 10,
+  const [company, rollup] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id },
+      include: {
+        contacts: { orderBy: [{ isPrimary: "desc" }, { fullName: "asc" }] },
+        deals: { orderBy: { createdAt: "desc" } },
+        activities: {
+          orderBy: { activityDate: "desc" },
+          include: { contact: { select: { fullName: true } } },
+          take: 10,
+        },
+        tasks: {
+          where: { status: { not: "done" } },
+          orderBy: { dueDate: "asc" },
+        },
+        accountTeamMembers: {
+          include: { user: { select: { id: true, name: true, email: true, department: true } } },
+        },
+        accountInsights: {
+          where: { isDismissed: false },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
+        accountPlans: {
+          where: { status: "ACTIVE" },
+          take: 3,
+        },
+        sourceRelationships: {
+          include: { targetCompany: { select: { id: true, companyName: true } } },
+          take: 10,
+        },
+        targetRelationships: {
+          include: { sourceCompany: { select: { id: true, companyName: true } } },
+          take: 10,
+        },
+        accountStakeholders: {
+          include: { contact: { select: { id: true, fullName: true, email: true, title: true } } },
+          take: 10,
+        },
+        accountHealthSnapshots: {
+          orderBy: { measuredAt: "desc" },
+          take: 1,
+        },
+        childCompanies: {
+          select: { id: true, companyName: true, tier: true, status: true },
+          take: 10,
+        },
+        parentCompany: {
+          select: { id: true, companyName: true },
+        },
       },
-      tasks: {
-        where: { status: { not: "done" } },
-        orderBy: { dueDate: "asc" },
-      },
-    },
-  });
+    }),
+    Promise.all([
+      prisma.contact.count({ where: { companyId: id } }),
+      prisma.deal.count({ where: { companyId: id, stage: { notIn: ["Closed Won", "Closed Lost"] } } }),
+      prisma.deal.aggregate({ where: { companyId: id, stage: { notIn: ["Closed Won", "Closed Lost"] } }, _sum: { amount: true } }),
+      prisma.deal.aggregate({ where: { companyId: id, stage: "Closed Won" }, _sum: { amount: true } }),
+      prisma.case.count({ where: { companyId: id, status: { notIn: ["Closed"] } } }),
+      prisma.contract.count({ where: { companyId: id, status: "Active" } }),
+      prisma.lead.count({ where: { companyId: id, score: { gte: 70 }, convertedAt: null } }),
+    ]),
+  ]);
 
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(company);
+
+  const [
+    contactsCount,
+    openDealsCount,
+    openPipelineResult,
+    wonAmountResult,
+    activeCasesCount,
+    activeContractsCount,
+    highScoreLeadsCount,
+  ] = rollup;
+
+  return NextResponse.json({
+    ...company,
+    _rollup: {
+      contactsCount,
+      openDealsCount,
+      openPipelineAmount: openPipelineResult._sum.amount ?? 0,
+      wonAmount: wonAmountResult._sum.amount ?? 0,
+      activeCasesCount,
+      activeContractsCount,
+      highScoreLeadsCount,
+    },
+  });
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
