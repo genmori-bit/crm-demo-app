@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { AppHeader } from "@/components/layout/app-header";
-import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { ResizableLayout } from "@/components/layout/resizable-layout";
 
 export default async function DashboardLayout({
   children,
@@ -14,10 +14,9 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-sf-bg">
       <AppHeader />
-      <SidebarNav />
-      <main className="ml-[220px] pt-14 min-h-screen">
+      <ResizableLayout>
         {children}
-      </main>
+      </ResizableLayout>
     </div>
   );
 }
