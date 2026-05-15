@@ -161,7 +161,7 @@ function fmtDate(d?: string | null): string {
 
 function fmtCurrency(n?: number | null): string {
   if (n == null) return "—";
-  return `¥${n.toLocaleString()}`;
+  return new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", minimumFractionDigits: 0 }).format(n);
 }
 
 function fmtCompact(n?: number | null): string {
@@ -170,7 +170,7 @@ function fmtCompact(n?: number | null): string {
   const abs = Math.abs(n);
   if (abs >= 1_0000_0000) return `¥${(n / 1_0000_0000).toFixed(abs % 1_0000_0000 === 0 ? 0 : 1)}億`;
   if (abs >= 1_0000)      return `¥${(n / 1_0000).toFixed(abs % 1_0000 === 0 ? 0 : 1)}万`;
-  return `¥${n.toLocaleString()}`;
+  return new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", minimumFractionDigits: 0 }).format(n);
 }
 
 function AddButton({ href, label = "追加" }: { href: string; label?: string }) {
@@ -1329,7 +1329,7 @@ export default function CompanyDetailPage() {
             <KpiCard
               label="商談パイプライン"
               value={fmtCompact(rollup.openPipelineAmount)}
-              sub={`¥${rollup.openPipelineAmount.toLocaleString()}`}
+              sub={fmtCurrency(rollup.openPipelineAmount)}
               accent="primary"
             />
             <KpiCard
@@ -1341,13 +1341,13 @@ export default function CompanyDetailPage() {
             <KpiCard
               label="受注金額"
               value={fmtCompact(rollup.wonAmount)}
-              sub={`¥${rollup.wonAmount.toLocaleString()}`}
+              sub={fmtCurrency(rollup.wonAmount)}
               accent="success"
             />
             <KpiCard
               label="ARR"
               value={fmtCompact(company.arr ?? 0)}
-              sub={company.arr ? `¥${company.arr.toLocaleString()}` : undefined}
+              sub={company.arr ? fmtCurrency(company.arr) : undefined}
               accent="success"
             />
             <KpiCard
