@@ -1228,12 +1228,14 @@ async function main() {
   console.log(`✅ ${createdReports.length}件のレポートを作成`);
 
   // ===================== Dashboards (2) =====================
+  // Layout uses 12-col grid. Each widget has position: {x,y,w,h}
+  // Row height = 80px.  KPI rows h=2 (160px), chart rows h=4 (320px).
   console.log("📈 ダッシュボードを作成中...");
 
   const salesDashboard = await prisma.dashboard.create({
     data: {
       name: "営業ダッシュボード",
-      description: "営業チームの主要KPIと商談状況",
+      description: "営業チームの主要KPIと商談状況を一目で把握",
       visibility: "PUBLIC",
       defaultDateRange: "thisMonth",
       ownerId: adminUser.id,
@@ -1243,73 +1245,218 @@ async function main() {
   const activityDashboard = await prisma.dashboard.create({
     data: {
       name: "営業活動分析ダッシュボード",
-      description: "活動履歴と担当者別分析",
+      description: "担当者別の活動量・商談進捗を分析",
       visibility: "PUBLIC",
       defaultDateRange: "last30",
       ownerId: adminUser.id,
     },
   });
 
-  // Sales Dashboard Widgets
+  // ── 営業ダッシュボード Widgets ──────────────────────────────────────────────
+  // Row 0 (y=0, h=2): 4 KPI cards @ w=3 each → fills 12 cols
+  // Row 1 (y=2, h=4): Stage BAR (w=6) | Funnel (w=6)
+  // Row 2 (y=6, h=4): Rep RANKING (w=4) | Monthly LINE (w=8)
+  // Row 3 (y=10, h=4): Stale RISK_LIST (w=6) | Pipeline TABLE (w=6)
   await Promise.all([
+    // ── Row 0: KPI strip ─────────────────────────────────────────────────────
     prisma.dashboardWidget.create({
-      data: { dashboardId: salesDashboard.id, reportId: dealPipelineReport.id, title: "商談件数（今月）", widgetType: "KPI", config: { metric: "count", format: "number" }, size: "SMALL", sortOrder: 0 },
+      data: {
+        dashboardId: salesDashboard.id, reportId: dealPipelineReport.id,
+        title: "進行中商談数", widgetType: "KPI",
+        config: { metric: "count", format: "number" },
+        size: "SMALL", sortOrder: 0,
+        position: { x: 0, y: 0, w: 3, h: 2 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: salesDashboard.id, reportId: dealPipelineReport.id, title: "パイプライン金額合計", widgetType: "KPI", config: { metric: "sumAmount", format: "currency" }, size: "SMALL", sortOrder: 1 },
+      data: {
+        dashboardId: salesDashboard.id, reportId: dealPipelineReport.id,
+        title: "パイプライン金額", widgetType: "KPI",
+        config: { metric: "sumAmount", format: "currency" },
+        size: "SMALL", sortOrder: 1,
+        position: { x: 3, y: 0, w: 3, h: 2 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: salesDashboard.id, reportId: stageSummaryReport.id, title: "ステージ別商談金額", widgetType: "BAR", config: { orientation: "horizontal", yAxis: "amount" }, size: "MEDIUM", sortOrder: 2 },
+      data: {
+        dashboardId: salesDashboard.id, reportId: dealPipelineReport.id,
+        title: "加重パイプライン", widgetType: "KPI",
+        config: { metric: "weightedAmount", format: "currency" },
+        size: "SMALL", sortOrder: 2,
+        position: { x: 6, y: 0, w: 3, h: 2 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: salesDashboard.id, reportId: funnelReport.id, title: "商談ファネル", widgetType: "FUNNEL", config: { metric: "amount" }, size: "MEDIUM", sortOrder: 3 },
+      data: {
+        dashboardId: salesDashboard.id, reportId: staleDealsReport.id,
+        title: "活動なし商談（30日超）", widgetType: "KPI",
+        config: { metric: "count", format: "number" },
+        size: "SMALL", sortOrder: 3,
+        position: { x: 9, y: 0, w: 3, h: 2 },
+      },
+    }),
+    // ── Row 1: Stage breakdown + Funnel ─────────────────────────────────────
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: salesDashboard.id, reportId: stageSummaryReport.id,
+        title: "ステージ別商談金額", widgetType: "BAR",
+        config: { orientation: "horizontal", yAxis: "amount" },
+        size: "LARGE", sortOrder: 4,
+        position: { x: 0, y: 2, w: 6, h: 4 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: salesDashboard.id, reportId: dealPipelineReport.id, title: "商談一覧", widgetType: "TABLE", config: { limit: "15" }, size: "WIDE", sortOrder: 4 },
+      data: {
+        dashboardId: salesDashboard.id, reportId: funnelReport.id,
+        title: "商談ファネル", widgetType: "FUNNEL",
+        config: { metric: "amount" },
+        size: "LARGE", sortOrder: 5,
+        position: { x: 6, y: 2, w: 6, h: 4 },
+      },
+    }),
+    // ── Row 2: Rep ranking + Monthly trend ──────────────────────────────────
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: salesDashboard.id, reportId: dealByRepReport.id,
+        title: "担当者別パイプライン", widgetType: "RANKING",
+        config: { metric: "amount", limit: 5 },
+        size: "MEDIUM", sortOrder: 6,
+        position: { x: 0, y: 6, w: 4, h: 4 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: salesDashboard.id, reportId: staleDealsReport.id, title: "活動なし商談", widgetType: "TABLE", config: { limit: "10" }, size: "MEDIUM", sortOrder: 5 },
+      data: {
+        dashboardId: salesDashboard.id, reportId: dealPipelineReport.id,
+        title: "商談金額推移", widgetType: "LINE",
+        config: { metric: "amount", dateGroup: "month" },
+        size: "WIDE", sortOrder: 7,
+        position: { x: 4, y: 6, w: 8, h: 4 },
+      },
+    }),
+    // ── Row 3: Risk list + Pipeline table ────────────────────────────────────
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: salesDashboard.id, reportId: staleDealsReport.id,
+        title: "要対応：活動なし商談", widgetType: "RISK_LIST",
+        config: { limit: 6 },
+        size: "LARGE", sortOrder: 8,
+        position: { x: 0, y: 10, w: 6, h: 4 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: salesDashboard.id, reportId: dealByRepReport.id, title: "担当者別パイプライン", widgetType: "BAR", config: { xAxis: "owner", yAxis: "amount", orientation: "horizontal" }, size: "MEDIUM", sortOrder: 6 },
+      data: {
+        dashboardId: salesDashboard.id, reportId: dealPipelineReport.id,
+        title: "今月クローズ予定商談", widgetType: "TABLE",
+        config: { limit: 5 },
+        size: "LARGE", sortOrder: 9,
+        position: { x: 6, y: 10, w: 6, h: 4 },
+      },
     }),
   ]);
 
-  // Activity Dashboard Widgets
+  // ── 営業活動分析ダッシュボード Widgets ─────────────────────────────────────
+  // Row 0 (y=0, h=2): 4 KPI cards
+  // Row 1 (y=2, h=4): Activity by rep BAR (w=6) | Activity type DONUT (w=6)
+  // Row 2 (y=6, h=4): Monthly LINE (w=8) | Activity count KPI (w=4)
+  // Row 3 (y=10, h=4): Followup RISK_LIST (w=6) | Rep RANKING (w=6)
   await Promise.all([
+    // ── Row 0: KPI strip ─────────────────────────────────────────────────────
     prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "活動件数（今月）", widgetType: "KPI", config: { metric: "count", format: "number" }, size: "SMALL", sortOrder: 0 },
+      data: {
+        dashboardId: activityDashboard.id, reportId: activityTimelineReport.id,
+        title: "今月の活動件数", widgetType: "KPI",
+        config: { metric: "count", format: "number" },
+        size: "SMALL", sortOrder: 0,
+        position: { x: 0, y: 0, w: 3, h: 2 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: activitySummaryReport.id, title: "担当者別活動件数", widgetType: "BAR", config: { xAxis: "owner", yAxis: "count", orientation: "horizontal" }, size: "MEDIUM", sortOrder: 1 },
+      data: {
+        dashboardId: activityDashboard.id, reportId: followupReport.id,
+        title: "フォローアップ期限超過", widgetType: "KPI",
+        config: { metric: "count", format: "number" },
+        size: "SMALL", sortOrder: 1,
+        position: { x: 3, y: 0, w: 3, h: 2 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "活動タイムライン", widgetType: "TABLE", config: { limit: "20" }, size: "WIDE", sortOrder: 2 },
+      data: {
+        dashboardId: activityDashboard.id, reportId: staleDealsReport.id,
+        title: "活動なし商談", widgetType: "KPI",
+        config: { metric: "count", format: "number" },
+        size: "SMALL", sortOrder: 2,
+        position: { x: 6, y: 0, w: 3, h: 2 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: followupReport.id, title: "フォローアップ期限切れ", widgetType: "TABLE", config: { limit: "10" }, size: "MEDIUM", sortOrder: 3 },
+      data: {
+        dashboardId: activityDashboard.id, reportId: taskListReport.id,
+        title: "未完了タスク", widgetType: "KPI",
+        config: { metric: "count", format: "number" },
+        size: "SMALL", sortOrder: 3,
+        position: { x: 9, y: 0, w: 3, h: 2 },
+      },
+    }),
+    // ── Row 1: Activity breakdown charts ────────────────────────────────────
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: activityDashboard.id, reportId: activitySummaryReport.id,
+        title: "担当者別活動件数", widgetType: "BAR",
+        config: { orientation: "horizontal", yAxis: "count" },
+        size: "LARGE", sortOrder: 4,
+        position: { x: 0, y: 2, w: 6, h: 4 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: taskListReport.id, title: "タスク一覧", widgetType: "TABLE", config: { limit: "10" }, size: "MEDIUM", sortOrder: 4 },
+      data: {
+        dashboardId: activityDashboard.id, reportId: activityTimelineReport.id,
+        title: "活動種別の比率", widgetType: "DONUT",
+        config: { xAxis: "type" },
+        size: "LARGE", sortOrder: 5,
+        position: { x: 6, y: 2, w: 6, h: 4 },
+      },
+    }),
+    // ── Row 2: Monthly trend + Rep ranking ──────────────────────────────────
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: activityDashboard.id, reportId: activityTimelineReport.id,
+        title: "月次活動推移", widgetType: "LINE",
+        config: { metric: "count", dateGroup: "month" },
+        size: "WIDE", sortOrder: 6,
+        position: { x: 0, y: 6, w: 8, h: 4 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: companyListReport.id, title: "企業一覧", widgetType: "TABLE", config: { limit: "10" }, size: "MEDIUM", sortOrder: 5 },
+      data: {
+        dashboardId: activityDashboard.id, reportId: activitySummaryReport.id,
+        title: "担当者ランキング", widgetType: "RANKING",
+        config: { metric: "count", limit: 5 },
+        size: "MEDIUM", sortOrder: 7,
+        position: { x: 8, y: 6, w: 4, h: 4 },
+      },
+    }),
+    // ── Row 3: Risk lists ─────────────────────────────────────────────────────
+    prisma.dashboardWidget.create({
+      data: {
+        dashboardId: activityDashboard.id, reportId: followupReport.id,
+        title: "要対応：フォローアップ期限切れ", widgetType: "RISK_LIST",
+        config: { limit: 6 },
+        size: "LARGE", sortOrder: 8,
+        position: { x: 0, y: 10, w: 6, h: 4 },
+      },
     }),
     prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "種別別活動件数", widgetType: "DONUT", config: { xAxis: "type" }, size: "SMALL", sortOrder: 6 },
-    }),
-    prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "月次活動推移", widgetType: "LINE", config: { dateGroup: "month" }, size: "WIDE", sortOrder: 7 },
-    }),
-    prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "結果別集計", widgetType: "PIE", config: { xAxis: "outcome" }, size: "SMALL", sortOrder: 8 },
-    }),
-    prisma.dashboardWidget.create({
-      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "活動メトリクス", widgetType: "KPI", config: { metric: "count", format: "number" }, size: "SMALL", sortOrder: 9 },
+      data: {
+        dashboardId: activityDashboard.id, reportId: activityTimelineReport.id,
+        title: "直近の活動（上位5件）", widgetType: "TABLE",
+        config: { limit: 5 },
+        size: "LARGE", sortOrder: 9,
+        position: { x: 6, y: 10, w: 6, h: 4 },
+      },
     }),
   ]);
 
-  console.log("✅ 2つのダッシュボードを作成");
+  console.log("✅ 2つのダッシュボードを作成（KPI中心・グリッド位置付き）");
 
   // ===================== MA Seed (minimal — keep existing structure) =====================
   const prospects = await Promise.all([

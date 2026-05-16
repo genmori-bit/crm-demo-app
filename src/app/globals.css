@@ -229,3 +229,32 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #706e6b;
 }
+
+/* ── react-grid-layout overrides ──────────────────────────────────────────── */
+.react-grid-item.react-grid-placeholder {
+  background: rgba(1, 118, 211, 0.12) !important;
+  border: 2px dashed rgba(1, 118, 211, 0.4) !important;
+  border-radius: 4px;
+  opacity: 1 !important;
+}
+.react-resizable-handle {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.react-grid-item:hover .react-resizable-handle,
+.react-grid-item.react-draggable-dragging .react-resizable-handle {
+  opacity: 1;
+}
+.react-resizable-handle::after {
+  border-color: #0176d3 !important;
+}
+.react-grid-item.react-draggable-dragging {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 2px rgba(1, 118, 211, 0.3);
+  z-index: 100;
+  opacity: 0.92;
+}
+.rgl-canvas {
+  background-image: radial-gradient(circle, #dddbda 1px, transparent 1px);
+  background-size: calc((100% / 12)) calc((100% / 12));
+  min-height: 600px;
+}

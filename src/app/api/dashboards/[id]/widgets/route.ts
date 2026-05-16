@@ -6,9 +6,10 @@ import { z } from "zod";
 const widgetSchema = z.object({
   reportId: z.string().min(1),
   title: z.string().min(1),
-  widgetType: z.enum(["KPI", "TABLE", "BAR", "LINE", "PIE", "DONUT", "FUNNEL"]),
+  widgetType: z.enum(["KPI", "TABLE", "BAR", "LINE", "PIE", "DONUT", "FUNNEL", "RANKING", "RISK_LIST"]),
   config: z.record(z.unknown()).default({}),
   size: z.enum(["SMALL", "MEDIUM", "LARGE", "WIDE", "FULL"]).default("MEDIUM"),
+  position: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
