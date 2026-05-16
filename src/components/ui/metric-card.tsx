@@ -136,7 +136,7 @@ export function MetricCard({
         hasAccent && TONE_ACCENT[tone],
         href && "hover:border-primary-300 hover:shadow-sm transition-all cursor-pointer",
         !href && "shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]",
-        className
+        !href && className
       )}
       aria-label={ariaLabel ?? `${label}: ${value}${unit ? " " + unit : ""}`}
     >
@@ -188,7 +188,7 @@ export function MetricCard({
 
   if (href) {
     return (
-      <Link href={href} className="block h-full">
+      <Link href={href} className={cn("block h-full", className)}>
         {inner}
       </Link>
     );

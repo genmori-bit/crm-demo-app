@@ -11,6 +11,7 @@ export async function GET() {
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
   const today = startOfDay(now);
+  const staleThreshold = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
   const [
     companyCount,
@@ -21,6 +22,7 @@ export async function GET() {
     allTasks,
     recentActivities,
     dealsByStage,
+    staleDealsCount,
   ] = await Promise.all([
     prisma.company.count(),
     prisma.contact.count(),
@@ -57,6 +59,16 @@ export async function GET() {
       by: ["stage"],
       _count: { id: true },
       _sum: { amount: true },
+    }),
+    // Deals with no activity in 14+ days (active stages only)
+    prisma.deal.count({
+      where: {
+        stage: { notIn: ["won", "lost"] },
+        OR: [
+          { activities: { none: {} } },
+          { activities: { every: { activityDate: { lt: staleThreshold } } } },
+        ],
+      },
     }),
   ]);
 
@@ -100,6 +112,7 @@ export async function GET() {
     pendingTasks,
     pendingTasksCount,
     overdueTasksCount,
+    staleDealsCount,
     recentActivities,
     dealsByStage,
     companyStatusCounts,
