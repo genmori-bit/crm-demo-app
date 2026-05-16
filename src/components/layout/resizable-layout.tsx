@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAppById } from "@/lib/apps";
 import { useCurrentApp } from "@/hooks/useCurrentApp";
@@ -122,14 +123,14 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
           <NavTooltip label={`${userName}\n${userEmail}`}>
             <div className="flex justify-center">
               <div className="w-7 h-7 rounded-full bg-primary-400/80 flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/20">
-                {userInitial}
+                {userInitial === "管" ? <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" /> : userInitial}
               </div>
             </div>
           </NavTooltip>
         ) : (
           <div className="flex items-center gap-2.5 px-1">
             <div className="w-7 h-7 rounded-full bg-primary-400/80 flex items-center justify-center text-white text-xs font-bold shrink-0 ring-1 ring-white/20">
-              {userInitial}
+              {userInitial === "管" ? <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" /> : userInitial}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-white/90 truncate">{userName}</p>

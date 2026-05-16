@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { ShieldCheck } from "lucide-react";
 import { AppLauncher } from "@/components/layout/app-launcher";
 import { useCurrentApp } from "@/hooks/useCurrentApp";
 import { getAppById } from "@/lib/apps";
@@ -105,7 +106,11 @@ export function AppHeader() {
             aria-expanded={userMenuOpen}
             aria-haspopup="true"
           >
-            {userInitial}
+            {userInitial === "管" ? (
+              <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+            ) : (
+              userInitial
+            )}
           </button>
           {userMenuOpen && (
             <div
