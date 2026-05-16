@@ -64,8 +64,13 @@ export default function CaseDetailPage() {
 
   const load = () => {
     fetch(`/api/cases/${id}`)
-      .then((r) => r.json())
-      .then((data) => { setCaseRecord(data); setEditStatus(data.status); setLoading(false); });
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => { setCaseRecord(data); setEditStatus(data.status); })
+      .catch(() => { setCaseRecord(null); })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [id]);

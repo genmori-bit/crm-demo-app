@@ -177,11 +177,15 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     setLoading(true);
     fetch(`/api/users/${id}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setUser(data);
-        setLoading(false);
-      });
+      })
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) {

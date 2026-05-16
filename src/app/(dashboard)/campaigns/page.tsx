@@ -53,12 +53,19 @@ function CampaignsInner() {
     if (q) params.set("q", q);
     if (statusFilter) params.set("status", statusFilter);
     fetch(`/api/campaigns?${params}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setCampaigns(data.campaigns ?? []);
         setTotal(data.total ?? 0);
-        setLoading(false);
-      });
+      })
+      .catch(() => {
+        setCampaigns([]);
+        setTotal(0);
+      })
+      .finally(() => setLoading(false));
   }, [q, statusFilter, page]);
 
   useEffect(() => { load(); }, [load]);

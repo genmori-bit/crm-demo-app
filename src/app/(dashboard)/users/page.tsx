@@ -71,11 +71,15 @@ export default function UsersPage() {
     if (deptFilter) params.set("department", deptFilter);
     if (roleFilter) params.set("role", roleFilter);
     fetch(`/api/users?${params}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setUsers(Array.isArray(data) ? data : []);
-        setLoading(false);
-      });
+      })
+      .catch(() => setUsers([]))
+      .finally(() => setLoading(false));
   }, [search, deptFilter, roleFilter]);
 
   const departments = [...new Set(users.map((u) => u.department).filter(Boolean))] as string[];

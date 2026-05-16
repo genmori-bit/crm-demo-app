@@ -63,12 +63,19 @@ function LeadsInner() {
     if (q) params.set("q", q);
     if (status) params.set("status", status);
     fetch(`/api/leads?${params}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setLeads(data.leads ?? []);
         setTotal(data.total ?? 0);
-        setLoading(false);
-      });
+      })
+      .catch(() => {
+        setLeads([]);
+        setTotal(0);
+      })
+      .finally(() => setLoading(false));
   }, [q, status, page]);
 
   useEffect(() => { load(); }, [load]);

@@ -65,12 +65,19 @@ function CasesInner() {
     if (q) params.set("q", q);
     if (statusFilter) params.set("status", statusFilter);
     fetch(`/api/cases?${params}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setCases(data.cases ?? []);
         setTotal(data.total ?? 0);
-        setLoading(false);
-      });
+      })
+      .catch(() => {
+        setCases([]);
+        setTotal(0);
+      })
+      .finally(() => setLoading(false));
   }, [q, statusFilter, page]);
 
   useEffect(() => { load(); }, [load]);

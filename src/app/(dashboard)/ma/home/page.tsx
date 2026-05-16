@@ -39,9 +39,23 @@ export default function MAHomePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/ma/leads/stats").then((r) => r.json()),
-      fetch("/api/ma/emails/stats").then((r) => r.json()),
-    ]).then(([leads, emails]) => setStats({ leads, emails }));
+      fetch("/api/ma/leads/stats").then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      }),
+      fetch("/api/ma/emails/stats").then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      }),
+    ])
+      .then(([leads, emails]) => setStats({ leads, emails }))
+      .catch(() => {
+        // Show empty stats on error rather than infinite loading
+        setStats({
+          leads: { total: 0, active: 0, converted: 0, optedOut: 0, avgScore: 0 },
+          emails: { total: 0, sent: 0, drafts: 0, scheduled: 0, totalSent: 0, totalOpened: 0, totalClicked: 0 },
+        });
+      });
   }, []);
 
   const today = new Date();

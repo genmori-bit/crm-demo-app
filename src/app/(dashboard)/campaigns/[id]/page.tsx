@@ -106,15 +106,18 @@ function AddMemberModal({
         const data = await res.json();
 
         if (tab === "contact") {
-          setResults((data.contacts ?? []).map((c: { id: string; fullName: string; email?: string; role?: string }) => ({
+          const contacts = Array.isArray(data) ? data : (data.contacts ?? []);
+          setResults(contacts.map((c: { id: string; fullName: string; email?: string; role?: string }) => ({
             id: c.id, name: c.fullName, email: c.email, sub: c.role, type: "contact" as const,
           })));
         } else if (tab === "lead") {
-          setResults((data.leads ?? []).map((l: { id: string; fullName: string; email?: string; status?: string }) => ({
+          const leads = Array.isArray(data) ? data : (data.leads ?? []);
+          setResults(leads.map((l: { id: string; fullName: string; email?: string; status?: string }) => ({
             id: l.id, name: l.fullName, email: l.email, sub: l.status, type: "lead" as const,
           })));
         } else {
-          setResults((data.companies ?? []).map((c: { id: string; companyName: string; industry?: string }) => ({
+          const companies = Array.isArray(data) ? data : (data.companies ?? []);
+          setResults(companies.map((c: { id: string; companyName: string; industry?: string }) => ({
             id: c.id, name: c.companyName, sub: c.industry, type: "company" as const,
           })));
         }
@@ -253,8 +256,13 @@ export default function CampaignDetailPage() {
 
   const load = useCallback(() => {
     fetch(`/api/campaigns/${id}`)
-      .then((r) => r.json())
-      .then((data) => { setCampaign(data); setLoading(false); });
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => { setCampaign(data); })
+      .catch(() => { setCampaign(null); })
+      .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => { load(); }, [load]);

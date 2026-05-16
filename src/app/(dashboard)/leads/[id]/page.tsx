@@ -75,13 +75,18 @@ export default function LeadDetailPage() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [converting, setConverting] = useState(false);
   const [convertForm, setConvertForm] = useState({
-    createCompany: true, companyName: "", createDeal: false, dealName: "", dealAmount: "", dealStage: "Prospecting",
+    createCompany: true, companyName: "", createDeal: false, dealName: "", dealAmount: "", dealStage: "qualification",
   });
 
   const load = () => {
     fetch(`/api/leads/${id}`)
-      .then((r) => r.json())
-      .then((data) => { setLead(data); setLoading(false); });
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => { setLead(data); })
+      .catch(() => { setLead(null); })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [id]);

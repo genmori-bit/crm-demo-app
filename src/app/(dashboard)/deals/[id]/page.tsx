@@ -16,6 +16,7 @@ import { formatDate, formatAmount, isOverdue } from "@/lib/utils";
 import { FileAttachmentsCard } from "@/components/ui/file-attachments-card";
 import { cn } from "@/lib/utils";
 import { ObjectIcon } from "@/components/ui/object-icon";
+import { DEAL_STAGE_LABELS } from "@/types";
 
 interface Deal {
   id: string;
@@ -97,7 +98,8 @@ export default function DealDetailPage() {
     try {
       await api.patch(`/api/deals/${id}`, { stage });
       setDeal({ ...deal, stage });
-      showToast(`ステージを「${stage}」に更新しました`);
+      const stageLabel = DEAL_STAGE_LABELS[stage as keyof typeof DEAL_STAGE_LABELS] ?? stage;
+      showToast(`ステージを「${stageLabel}」に更新しました`);
     } catch {
       showToast("更新に失敗しました", "error");
     }

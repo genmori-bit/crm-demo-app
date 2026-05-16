@@ -58,7 +58,13 @@ export default function OrderDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/orders/${id}`).then((r) => r.json()).then(setOrder);
+    fetch(`/api/orders/${id}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(setOrder)
+      .catch(() => setOrder(null));
   }, [id]);
 
   const handleDelete = async () => {

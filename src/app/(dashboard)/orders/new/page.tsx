@@ -33,7 +33,7 @@ export default function NewOrderPage() {
   useEffect(() => {
     fetch("/api/companies?limit=200")
       .then((r) => r.json())
-      .then((d) => setCompanies(d.companies ?? []));
+      .then((d) => setCompanies(Array.isArray(d) ? d : (d.companies ?? [])));
   }, []);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));

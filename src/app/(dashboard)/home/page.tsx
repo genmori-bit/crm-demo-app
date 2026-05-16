@@ -326,9 +326,15 @@ export default function HomePage() {
 
   const load = useCallback(() => {
     fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then(setData);
-  }, []);
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(setData)
+      .catch(() => {
+        showToast("ダッシュボードの読み込みに失敗しました", "error");
+      });
+  }, [showToast]);
 
   useEffect(() => { load(); }, [load]);
 

@@ -55,7 +55,13 @@ export default function ContractDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/contracts/${id}`).then((r) => r.json()).then(setContract);
+    fetch(`/api/contracts/${id}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(setContract)
+      .catch(() => setContract(null));
   }, [id]);
 
   const handleDelete = async () => {
