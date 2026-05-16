@@ -10,6 +10,7 @@ import { PageLoading } from "@/components/ui/loading";
 import { Select } from "@/components/ui/select";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ObjectIcon } from "@/components/ui/object-icon";
 
 interface Case {
   id: string;
@@ -99,13 +100,16 @@ export default function CaseDetailPage() {
         </nav>
 
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <span className="text-xs text-sf-weak font-mono">#{caseRecord.caseNumber}</span>
-              {statusInfo && <Badge variant={statusInfo.variant} dot>{statusInfo.label}</Badge>}
-              {priorityInfo && <Badge variant={priorityInfo.variant}>{priorityInfo.label}</Badge>}
+          <div className="flex items-start gap-3 min-w-0">
+            <ObjectIcon objectType="Case" size="sm" className="mt-0.5" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <span className="text-xs text-sf-weak font-mono">#{caseRecord.caseNumber}</span>
+                {statusInfo && <Badge variant={statusInfo.variant} dot>{statusInfo.label}</Badge>}
+                {priorityInfo && <Badge variant={priorityInfo.variant}>{priorityInfo.label}</Badge>}
+              </div>
+              <h1 className="text-xl font-bold text-sf-text">{caseRecord.subject}</h1>
             </div>
-            <h1 className="text-xl font-bold text-sf-text">{caseRecord.subject}</h1>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">

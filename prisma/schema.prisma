@@ -1802,6 +1802,7 @@ model ObjectDefinition {
   objectType         String    @default("CUSTOM")
   category           String    @default("CUSTOM")
   icon               String?
+  color              String?   @default("#4f46e5")
   isActive           Boolean   @default(true)
   isSearchable       Boolean   @default(true)
   isReportable       Boolean   @default(true)

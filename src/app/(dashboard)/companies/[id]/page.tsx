@@ -11,6 +11,7 @@ import { LightningCard, LightningCardHeader, LightningCardBody } from "@/compone
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { FileAttachmentsCard } from "@/components/ui/file-attachments-card";
+import { ObjectIcon } from "@/components/ui/object-icon";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1275,14 +1276,7 @@ export default function CompanyDetailPage() {
         {/* Title row */}
         <div className="px-6 pb-3 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Avatar */}
-            <div
-              className={`w-12 h-12 rounded-sf ${avatarColor} flex items-center justify-center shrink-0`}
-            >
-              <span className="text-xl font-bold text-white">
-                {company.companyName[0]}
-              </span>
-            </div>
+            <ObjectIcon objectType="Company" size="sm" />
             <div>
               <h1 className="text-xl font-bold text-sf-text leading-tight">{company.companyName}</h1>
               <div className="flex items-center gap-1.5 flex-wrap mt-0.5">

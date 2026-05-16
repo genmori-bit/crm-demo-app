@@ -15,6 +15,7 @@ import { PageLoading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api-client";
 import { formatAmount } from "@/lib/utils";
+import { ObjectIcon } from "@/components/ui/object-icon";
 
 interface Contact {
   id: string;
@@ -68,11 +69,7 @@ export default function ContactDetailPage() {
   return (
     <div>
       <PageHeader
-        objectIcon={
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-        }
+        objectIcon={<ObjectIcon objectType="Contact" size="sm" />}
         objectLabel="担当者"
         title={contact.fullName}
         actions={

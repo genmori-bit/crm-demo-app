@@ -8,6 +8,7 @@ import { LightningCard, LightningCardHeader, LightningCardBody } from "@/compone
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { PageLoading } from "@/components/ui/loading";
 import { formatDate, formatAmount } from "@/lib/utils";
+import { ObjectIcon } from "@/components/ui/object-icon";
 
 interface Order {
   id: string;
@@ -90,11 +91,7 @@ export default function OrderDetailPage() {
 
         <div className="px-6 pb-4 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-sf bg-primary-500 flex items-center justify-center shrink-0">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
+            <ObjectIcon objectType="Order" size="sm" />
             <div>
               <p className="text-2xs font-medium text-sf-weak uppercase tracking-wide">注文</p>
               <h1 className="text-xl font-bold text-sf-text leading-tight font-mono">{order.orderNumber}</h1>

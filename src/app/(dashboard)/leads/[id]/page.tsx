@@ -10,6 +10,7 @@ import { PageLoading } from "@/components/ui/loading";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { ObjectIcon } from "@/components/ui/object-icon";
 
 interface Lead {
   id: string;
@@ -140,10 +141,7 @@ export default function LeadDetailPage() {
         </nav>
 
         <div className="flex items-start gap-4">
-          {/* Avatar */}
-          <div className="w-12 h-12 rounded-sf bg-primary-100 border border-primary-200 flex items-center justify-center shrink-0">
-            <span className="text-base font-bold text-primary-700">{initials}</span>
-          </div>
+          <ObjectIcon objectType="Lead" size="sm" className="mt-0.5" />
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">

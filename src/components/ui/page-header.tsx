@@ -22,7 +22,7 @@ export function PageHeader({
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           {objectIcon && (
-            <div className="w-10 h-10 rounded-sf flex items-center justify-center bg-primary-500 text-white shrink-0 shadow-sm">
+            <div className="shrink-0">
               {objectIcon}
             </div>
           )}
