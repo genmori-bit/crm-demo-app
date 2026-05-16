@@ -3,26 +3,37 @@
 import { cn } from "@/lib/utils";
 import { DEAL_STAGE_LABELS, type DealStage } from "@/types";
 
-const ACTIVE_STAGES: DealStage[] = ["prospecting", "discovery", "proposal", "negotiation", "closing", "won"];
+/** ステージパスに表示するアクティブステージ（won/lostを除く） */
+const ACTIVE_STAGES: DealStage[] = [
+  "qualification",
+  "needs_analysis",
+  "value_proposition",
+  "proposal",
+  "negotiation",
+  "final_review",
+  "won",
+];
 
 const STAGE_GUIDANCE: Record<DealStage, string> = {
-  prospecting: "見込み顧客を特定し、初回コンタクトで案件化しましょう",
-  discovery: "ニーズヒアリングと課題整理を進めましょう",
-  proposal: "提案資料を作成し、担当者にプレゼンしましょう",
-  negotiation: "契約条件の交渉と承認プロセスを進めましょう",
-  closing: "最終条件の調整と契約締結に向けて進めましょう",
-  won: "受注を確定し、オンボーディングを開始しましょう",
-  lost: "失注の原因を分析し、次回案件に活かしましょう",
+  qualification:     "初回コンタクトで案件化の可否を確認しましょう",
+  needs_analysis:    "顧客の課題・ニーズをヒアリングして整理しましょう",
+  value_proposition: "自社ソリューションの価値を訴求しましょう",
+  proposal:          "提案資料を作成し、担当者にプレゼンしましょう",
+  negotiation:       "契約条件の交渉と承認プロセスを進めましょう",
+  final_review:      "最終条件の確認と契約締結に向けて進めましょう",
+  won:               "受注を確定し、オンボーディングを開始しましょう",
+  lost:              "失注の原因を分析し、次回案件に活かしましょう",
 };
 
 const STAGE_COLORS: Record<DealStage, { bg: string; text: string; ring: string }> = {
-  prospecting: { bg: "bg-[#706e6b]", text: "text-white", ring: "ring-[#706e6b]" },
-  discovery: { bg: "bg-[#dd7a01]", text: "text-white", ring: "ring-[#dd7a01]" },
-  proposal: { bg: "bg-[#0176d3]", text: "text-white", ring: "ring-[#0176d3]" },
-  negotiation: { bg: "bg-[#6b34b0]", text: "text-white", ring: "ring-[#6b34b0]" },
-  closing: { bg: "bg-[#0e7490]", text: "text-white", ring: "ring-[#0e7490]" },
-  won: { bg: "bg-success", text: "text-white", ring: "ring-success" },
-  lost: { bg: "bg-danger", text: "text-white", ring: "ring-danger" },
+  qualification:     { bg: "bg-[#706e6b]", text: "text-white", ring: "ring-[#706e6b]" },
+  needs_analysis:    { bg: "bg-[#dd7a01]", text: "text-white", ring: "ring-[#dd7a01]" },
+  value_proposition: { bg: "bg-[#e57200]", text: "text-white", ring: "ring-[#e57200]" },
+  proposal:          { bg: "bg-[#0176d3]", text: "text-white", ring: "ring-[#0176d3]" },
+  negotiation:       { bg: "bg-[#6b34b0]", text: "text-white", ring: "ring-[#6b34b0]" },
+  final_review:      { bg: "bg-[#0e7490]", text: "text-white", ring: "ring-[#0e7490]" },
+  won:               { bg: "bg-success",   text: "text-white", ring: "ring-success" },
+  lost:              { bg: "bg-danger",    text: "text-white", ring: "ring-danger" },
 };
 
 interface StagePathProps {
@@ -49,7 +60,7 @@ export function StagePath({ currentStage, onStageChange }: StagePathProps) {
         </div>
         {onStageChange && (
           <button
-            onClick={() => onStageChange("prospecting")}
+            onClick={() => onStageChange("qualification")}
             className="ml-auto text-xs text-danger font-medium underline hover:no-underline focus:outline-none"
           >
             ステージをリセット

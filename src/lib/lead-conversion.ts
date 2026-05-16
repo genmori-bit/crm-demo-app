@@ -68,7 +68,7 @@ export async function convertLead(input: LeadConversionInput): Promise<LeadConve
           dealName: input.dealName ?? `${lead.fullName} - 商談`,
           companyId,
           amount: input.dealAmount ?? 0,
-          stage: input.dealStage ?? "prospecting",
+          stage: input.dealStage ?? "qualification",
           expectedCloseDate: input.dealCloseDate ? new Date(input.dealCloseDate) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
           leadSource: lead.source ?? undefined,
           ownerId: input.convertedById,

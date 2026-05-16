@@ -28,7 +28,7 @@ function pickN<T>(arr: T[], n: number): T[] {
 async function main() {
   console.log("🌱 シードデータの投入を開始...");
 
-  // ===================== Cleanup =====================
+  // ===================== Cleanup (leaf → root order) =====================
   await prisma.auditLog.deleteMany();
   await prisma.importJob.deleteMany();
   await prisma.exportJob.deleteMany();
@@ -36,6 +36,46 @@ async function main() {
   await prisma.dashboard.deleteMany();
   await prisma.report.deleteMany();
   await prisma.savedView.deleteMany();
+
+  // Account 360 cleanup
+  await prisma.pageComponentInstance.deleteMany();
+  await prisma.recordPageAssignment.deleteMany();
+  await prisma.recordPageVersion.deleteMany();
+  await prisma.recordPageDefinition.deleteMany();
+  await prisma.accountInsight.deleteMany();
+  await prisma.accountHealthSnapshot.deleteMany();
+  await prisma.accountPlan.deleteMany();
+  await prisma.accountRelationship.deleteMany();
+  await prisma.accountStakeholder.deleteMany();
+  await prisma.accountTeamMember.deleteMany();
+
+  // Standard objects cleanup (before company/deal/contact)
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.subscription.deleteMany();
+  await prisma.quoteLineItem.deleteMany();
+  await prisma.quote.deleteMany();
+  await prisma.contract.deleteMany();
+  await prisma.opportunityLineItem.deleteMany();
+  await prisma.priceBookEntry.deleteMany();
+  await prisma.priceBook.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.campaignInfluence.deleteMany();
+  await prisma.campaignMember.deleteMany();
+  await prisma.campaign.deleteMany();
+  await prisma.activityRelation.deleteMany();
+  await prisma.opportunityContactRole.deleteMany();
+  await prisma.case.deleteMany();
+
+  // Lead MA cleanup
+  await prisma.leadProgramEnrollment.deleteMany();
+  await prisma.leadFormSubmission.deleteMany();
+  await prisma.leadEmailRecipient.deleteMany();
+  await prisma.leadListMembership.deleteMany();
+  await prisma.leadEngagementActivity.deleteMany();
+  await prisma.lead.deleteMany();
+
+  // CRM core cleanup
   await prisma.dealTag.deleteMany();
   await prisma.companyTag.deleteMany();
   await prisma.dataTag.deleteMany();
@@ -45,7 +85,7 @@ async function main() {
   await prisma.deal.deleteMany();
   await prisma.contact.deleteMany();
   await prisma.company.deleteMany();
-  await prisma.user.deleteMany();
+
   // MA cleanup
   await prisma.programEnrollment.deleteMany();
   await prisma.engagementProgramNode.deleteMany();
@@ -68,6 +108,14 @@ async function main() {
   await prisma.prospect.deleteMany();
   await prisma.landingPage.deleteMany();
 
+  // ObjectDefinition cleanup
+  await prisma.fieldDefinition.deleteMany();
+  await prisma.customObjectRecord.deleteMany();
+  await prisma.objectDefinition.deleteMany();
+
+  // User cleanup (must be after all fk dependents)
+  await prisma.user.deleteMany();
+
   // Settings cleanup
   await prisma.permissionSetAssignment.deleteMany();
   await prisma.teamMember.deleteMany();
@@ -81,47 +129,6 @@ async function main() {
   await prisma.role.deleteMany();
   await prisma.securitySettings.deleteMany();
   await prisma.orgSettings.deleteMany();
-
-  // Standard objects cleanup
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.quoteLineItem.deleteMany();
-  await prisma.quote.deleteMany();
-  await prisma.subscription.deleteMany();
-  await prisma.contract.deleteMany();
-  await prisma.opportunityLineItem.deleteMany();
-  await prisma.priceBookEntry.deleteMany();
-  await prisma.priceBook.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.campaignInfluence.deleteMany();
-  await prisma.campaignMember.deleteMany();
-  await prisma.campaign.deleteMany();
-  await prisma.activityRelation.deleteMany();
-  await prisma.opportunityContactRole.deleteMany();
-  await prisma.case.deleteMany();
-  // Lead MA cleanup
-  await prisma.leadProgramEnrollment.deleteMany();
-  await prisma.leadFormSubmission.deleteMany();
-  await prisma.leadEmailRecipient.deleteMany();
-  await prisma.leadListMembership.deleteMany();
-  await prisma.leadEngagementActivity.deleteMany();
-  await prisma.lead.deleteMany();
-  // ObjectDefinition cleanup
-  await prisma.fieldDefinition.deleteMany();
-  await prisma.customObjectRecord.deleteMany();
-  await prisma.objectDefinition.deleteMany();
-
-  // Account 360 cleanup
-  await prisma.pageComponentInstance.deleteMany();
-  await prisma.recordPageAssignment.deleteMany();
-  await prisma.recordPageVersion.deleteMany();
-  await prisma.recordPageDefinition.deleteMany();
-  await prisma.accountInsight.deleteMany();
-  await prisma.accountHealthSnapshot.deleteMany();
-  await prisma.accountPlan.deleteMany();
-  await prisma.accountRelationship.deleteMany();
-  await prisma.accountStakeholder.deleteMany();
-  await prisma.accountTeamMember.deleteMany();
 
   console.log("✅ 既存データを削除完了");
 
@@ -328,44 +335,106 @@ async function main() {
   // ===================== Companies (80) =====================
   console.log("🏢 企業を作成中...");
 
-  interface IndustryConfig {
-    industry: string;
-    subIndustry: string;
-    count: number;
-  }
-  const industryConfigs: IndustryConfig[] = [
-    { industry: "IT・ソフトウェア", subIndustry: "SaaS", count: 12 },
-    { industry: "IT・ソフトウェア", subIndustry: "システムインテグレーション", count: 8 },
-    { industry: "製造", subIndustry: "電機・精密機器", count: 5 },
-    { industry: "製造", subIndustry: "機械・設備", count: 5 },
-    { industry: "金融", subIndustry: "銀行・信用金庫", count: 4 },
-    { industry: "金融", subIndustry: "保険", count: 4 },
-    { industry: "医療・ヘルスケア", subIndustry: "医療機器", count: 4 },
-    { industry: "医療・ヘルスケア", subIndustry: "製薬", count: 4 },
-    { industry: "流通・小売", subIndustry: "Eコマース", count: 4 },
-    { industry: "流通・小売", subIndustry: "小売", count: 4 },
-    { industry: "建設・不動産", subIndustry: "建設", count: 3 },
-    { industry: "建設・不動産", subIndustry: "不動産", count: 3 },
-    { industry: "物流", subIndustry: "物流・配送", count: 6 },
-    { industry: "教育", subIndustry: "EdTech", count: 5 },
-    { industry: "食品・飲食", subIndustry: "食品製造", count: 4 },
-    { industry: "商社", subIndustry: "総合商社", count: 5 },
-  ];
+  // Hardcoded company data (80 entries) with deterministic domains
+  const COMPANY_DATA = [
+    // IT・ソフトウェア - SaaS (12)
+    { name: "株式会社青葉テクノロジーズ",          domain: "aoba-tech",               industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社北斗システムズ",              domain: "hokuto-sys",              industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社ネクストウェーブ",             domain: "nextwave",                industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社大和クラウド",               domain: "yamato-cloud",            industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社日本橋データラボ",             domain: "nihombashi-datalab",      industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社六本木サイバー",              domain: "roppongi-cyber",          industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社銀座ソリューションズ",          domain: "ginza-solutions",         industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社神楽坂マーケット",             domain: "kagurazaka-market",       industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社八重洲プロダクト",             domain: "yaesu-product",           industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社鎌倉ワークス",               domain: "kamakura-works",          industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社札幌データサービス",            domain: "sapporo-data",            industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    { name: "株式会社アーバンリンク",              domain: "urbanlink",               industry: "IT・ソフトウェア",  subIndustry: "SaaS" },
+    // IT・ソフトウェア - SI (8)
+    { name: "株式会社金沢システム開発",             domain: "kanazawa-sysdev",         industry: "IT・ソフトウェア",  subIndustry: "システムインテグレーション" },
+    { name: "株式会社広島モビリティ",              domain: "hiroshima-mobility",      industry: "IT・ソフトウェア",  subIndustry: "システムインテグレーション" },
+    { name: "株式会社東雲フーズ",                 domain: "shinonome-foods",         industry: "IT・ソフトウェア",  subIndustry: "システムインテグレーション" },
+    { name: "株式会社仙台ヘルスケア",              domain: "sendai-healthcare",       industry: "IT・ソフトウェア",  subIndustry: "システムインテグレーション" },
+    { name: "株式会社横浜スマート物流",             domain: "yokohama-smartlogistics", industry: "IT・ソフトウェア",  subIndustry: "システムインテグレーション" },
+    { name: "株式会社京都クラフト",               domain: "kyoto-craft",             industry: "IT・ソフトウェア",  subIndustry: "システムインテグレーション" },
+    { name: "株式会社博多流通",                  domain: "hakata-ryutsu",           industry: "IT・ソフトウェア",  subIndustry: "システムインテグレーション" },
+    { name: "株式会社新宿オフィスサポート",          domain: "shinjuku-officesupport",  industry: "IT・ソフトウェア",  subIndustry: "システムインテグレーション" },
+    // 製造 - 電機精密 (5)
+    { name: "株式会社藤沢精機",                  domain: "fujisawa-seiki",          industry: "製造",            subIndustry: "電機・精密機器" },
+    { name: "株式会社山吹建設",                  domain: "yamabuki-kensetsu",       industry: "製造",            subIndustry: "電機・精密機器" },
+    { name: "株式会社千歳インダストリー",            domain: "chitose-industry",        industry: "製造",            subIndustry: "電機・精密機器" },
+    { name: "株式会社ミナト製作所",               domain: "minato-mfg",             industry: "製造",            subIndustry: "電機・精密機器" },
+    { name: "株式会社東海ファイナンス",             domain: "tokai-finance",           industry: "製造",            subIndustry: "電機・精密機器" },
+    // 製造 - 機械設備 (5)
+    { name: "株式会社瀬戸内ロジスティクス",          domain: "setouchi-logistics",      industry: "製造",            subIndustry: "機械・設備" },
+    { name: "株式会社オリオンリテール",             domain: "orion-retail",            industry: "製造",            subIndustry: "機械・設備" },
+    { name: "株式会社グリーンフィールド",            domain: "greenfield",              industry: "製造",            subIndustry: "機械・設備" },
+    { name: "株式会社ひばり薬局",                 domain: "hibari-pharmacy",         industry: "製造",            subIndustry: "機械・設備" },
+    { name: "株式会社南青山メディア",              domain: "minamiayoyama-media",     industry: "製造",            subIndustry: "機械・設備" },
+    // 金融 - 銀行信金 (4)
+    { name: "株式会社北浜コンサルティング",          domain: "kitahama-consulting",     industry: "金融",            subIndustry: "銀行・信用金庫" },
+    { name: "株式会社レイクサイドホテルズ",          domain: "lakeside-hotels",         industry: "金融",            subIndustry: "銀行・信用金庫" },
+    { name: "株式会社ブルーム教育研究所",            domain: "bloom-edu",               industry: "金融",            subIndustry: "銀行・信用金庫" },
+    { name: "株式会社クローバー食品",              domain: "clover-foods",            industry: "金融",            subIndustry: "銀行・信用金庫" },
+    // 金融 - 保険 (4)
+    { name: "株式会社すみれケア",                 domain: "sumire-care",             industry: "金融",            subIndustry: "保険" },
+    { name: "株式会社桜井メディカル",              domain: "sakurai-medical",         industry: "金融",            subIndustry: "保険" },
+    { name: "株式会社白金物流",                  domain: "shirogane-logistics",     industry: "金融",            subIndustry: "保険" },
+    { name: "株式会社森川商事",                  domain: "morikawa-shoji",          industry: "金融",            subIndustry: "保険" },
+    // 医療ヘルスケア - 医療機器 (4)
+    { name: "株式会社晴海デザイン",               domain: "harumi-design",           industry: "医療・ヘルスケア",   subIndustry: "医療機器" },
+    { name: "株式会社那覇トラベル",               domain: "naha-travel",             industry: "医療・ヘルスケア",   subIndustry: "医療機器" },
+    { name: "株式会社東京ビジョン",               domain: "tokyo-vision",            industry: "医療・ヘルスケア",   subIndustry: "医療機器" },
+    { name: "株式会社大阪イノベーションラボ",         domain: "osaka-innlab",            industry: "医療・ヘルスケア",   subIndustry: "医療機器" },
+    // 医療ヘルスケア - 製薬 (4)
+    { name: "株式会社名古屋デジタルファクトリー",      domain: "nagoya-digitalfactory",   industry: "医療・ヘルスケア",   subIndustry: "製薬" },
+    { name: "株式会社神戸マリン",                 domain: "kobe-marine",             industry: "医療・ヘルスケア",   subIndustry: "製薬" },
+    { name: "株式会社福岡グリーンエネルギー",         domain: "fukuoka-greenenergy",     industry: "医療・ヘルスケア",   subIndustry: "製薬" },
+    { name: "株式会社浜松プレシジョン",             domain: "hamamatsu-precision",     industry: "医療・ヘルスケア",   subIndustry: "製薬" },
+    // 流通小売 - Eコマース (4)
+    { name: "株式会社長野アグリテック",             domain: "nagano-agritech",         industry: "流通・小売",       subIndustry: "Eコマース" },
+    { name: "株式会社宮崎バイオサイエンス",           domain: "miyazaki-bioscience",     industry: "流通・小売",       subIndustry: "Eコマース" },
+    { name: "株式会社熊本スマートシティ",            domain: "kumamoto-smartcity",      industry: "流通・小売",       subIndustry: "Eコマース" },
+    { name: "株式会社静岡オーガニクス",             domain: "shizuoka-organics",       industry: "流通・小売",       subIndustry: "Eコマース" },
+    // 流通小売 - 小売 (4)
+    { name: "株式会社岐阜テキスタイル",             domain: "gifu-textile",            industry: "流通・小売",       subIndustry: "小売" },
+    { name: "株式会社三重ケミカルズ",              domain: "mie-chemicals",           industry: "流通・小売",       subIndustry: "小売" },
+    { name: "株式会社滋賀ウォーターテック",           domain: "shiga-watertech",         industry: "流通・小売",       subIndustry: "小売" },
+    { name: "株式会社奈良ヘリテージ",              domain: "nara-heritage",           industry: "流通・小売",       subIndustry: "小売" },
+    // 建設不動産 - 建設 (3)
+    { name: "株式会社和歌山バイオマス",             domain: "wakayama-biomass",        industry: "建設・不動産",      subIndustry: "建設" },
+    { name: "株式会社徳島サーキュラー",             domain: "tokushima-circular",      industry: "建設・不動産",      subIndustry: "建設" },
+    { name: "株式会社高松マリンテック",             domain: "takamatsu-marinetech",    industry: "建設・不動産",      subIndustry: "建設" },
+    // 建設不動産 - 不動産 (3)
+    { name: "株式会社松山ロボティクス",             domain: "matsuyama-robotics",      industry: "建設・不動産",      subIndustry: "不動産" },
+    { name: "株式会社高知エコシステムズ",            domain: "kochi-ecosystems",        industry: "建設・不動産",      subIndustry: "不動産" },
+    { name: "株式会社長崎オーシャン",              domain: "nagasaki-ocean",          industry: "建設・不動産",      subIndustry: "不動産" },
+    // 物流 (6)
+    { name: "株式会社秋田フードサービス",            domain: "akita-food",              industry: "物流",            subIndustry: "物流・配送" },
+    { name: "株式会社山形クリエイティブ",            domain: "yamagata-creative",       industry: "物流",            subIndustry: "物流・配送" },
+    { name: "株式会社岩手スポーツサイエンス",         domain: "iwate-sports",            industry: "物流",            subIndustry: "物流・配送" },
+    { name: "株式会社宮城テクスタイル",             domain: "miyagi-textile",          industry: "物流",            subIndustry: "物流・配送" },
+    { name: "株式会社青森マリン",                 domain: "aomori-marine",           industry: "物流",            subIndustry: "物流・配送" },
+    { name: "株式会社北海道ファームテック",           domain: "hokkaido-farmtech",       industry: "物流",            subIndustry: "物流・配送" },
+    // 教育 (5)
+    { name: "株式会社富山ハーモニー",              domain: "toyama-harmony",          industry: "教育",            subIndustry: "EdTech" },
+    { name: "株式会社石川クラフト",               domain: "ishikawa-craft",          industry: "教育",            subIndustry: "EdTech" },
+    { name: "株式会社福井マニュファクチャリング",      domain: "fukui-mfg",               industry: "教育",            subIndustry: "EdTech" },
+    { name: "株式会社山梨ナチュラル",              domain: "yamanashi-natural",       industry: "教育",            subIndustry: "EdTech" },
+    { name: "株式会社長野アルプスコープ",            domain: "nagano-alpscope",         industry: "教育",            subIndustry: "EdTech" },
+    // 食品飲食 (4)
+    { name: "株式会社栃木グリーン",               domain: "tochigi-green",           industry: "食品・飲食",       subIndustry: "食品製造" },
+    { name: "株式会社群馬アドバンスド",             domain: "gunma-advanced",          industry: "食品・飲食",       subIndustry: "食品製造" },
+    { name: "株式会社茨城インダストリアル",           domain: "ibaraki-industrial",      industry: "食品・飲食",       subIndustry: "食品製造" },
+    { name: "株式会社千葉マーケットプレイス",         domain: "chiba-marketplace",       industry: "食品・飲食",       subIndustry: "食品製造" },
+    // 商社 (5)
+    { name: "株式会社埼玉テクノロジー",             domain: "saitama-tech",            industry: "商社",            subIndustry: "総合商社" },
+    { name: "株式会社神奈川インテグレーション",        domain: "kanagawa-integration",    industry: "商社",            subIndustry: "総合商社" },
+    { name: "株式会社東京メトロポリタン",            domain: "tokyo-metropolitan",      industry: "商社",            subIndustry: "総合商社" },
+    { name: "株式会社大阪ビジネスソリューション",      domain: "osaka-bizsoln",           industry: "商社",            subIndustry: "総合商社" },
+    { name: "株式会社九州デジタルハブ",             domain: "kyushu-digitalhub",       industry: "商社",            subIndustry: "総合商社" },
+  ] as const;
 
-  const companyNamesByIndustry: Record<string, string[]> = {
-    "IT・ソフトウェア": ["テクノソリューション", "デジタルイノベーション", "クラウドシステムズ", "スマートテック", "データドリブン", "NextGenシステム", "アジャイルソフト", "イノバーク", "DigitalWorks", "テックフォース", "クラウドパートナーズ", "デジタルシフト", "ビジョンテック", "コードラボ", "サイバーリンク", "インフィニティテック", "ソフトウェアファクトリー", "クラウドベース", "ネクストクラウド", "テックビジョン"],
-    "製造": ["精工機械", "電機製作所", "先端機器", "産業システム", "テクノマニファクチャリング", "機械精工", "エレクトロニクス精密", "精密部品工業", "先進製造", "スマートファクトリー"],
-    "金融": ["ファイナンシャルテクノロジー", "フィンテックソリューション", "アセットマネジメント", "デジタルバンク", "クレジットテック", "ファイナンスグループ", "キャピタルマネジメント", "インシュアテック"],
-    "医療・ヘルスケア": ["ヘルスケアイノベーション", "メディカルシステム", "バイオテクノロジー", "ライフサイエンス", "クリニカルテック", "メドテック", "ヘルスデジタル", "バイオファーマ"],
-    "流通・小売": ["コマースプラットフォーム", "リテールテック", "オムニチャネル", "デジタルリテール", "Eコマースソリューション", "ショッピングテック", "リテールDX", "マーケットプレイス"],
-    "建設・不動産": ["建設テクノロジー", "スマートビル", "不動産テック", "プロパティマネジメント", "建設DX", "リアルエステートテック"],
-    "物流": ["ロジスティクスDX", "スマートロジ", "配送テクノロジー", "サプライチェーンシステム", "物流プラットフォーム", "ラストマイルテック", "倉庫管理システム", "配送最適化", "ロジテック", "スマート配送"],
-    "教育": ["エドテクノロジー", "ラーニングプラットフォーム", "デジタル学習", "教育DX", "スマートエデュ", "eラーニングシステム", "学習管理プラットフォーム", "教育イノベーション"],
-    "食品・飲食": ["フードテクノロジー", "食品管理システム", "グルメプラットフォーム", "フードDX", "食品トレーサビリティ", "スマートフード", "食品ロジ", "フードテック"],
-    "商社": ["グローバル商事", "トレーディングDX", "総合商社システム", "貿易プラットフォーム", "デジタル商社", "スマートトレーディング", "グローバルサプライ", "インターナショナルトレード"],
-  };
-
-  const prefixes = ["株式会社", "有限会社"];
   const tiers = ["STRATEGIC", "ENTERPRISE", "MID_MARKET", "SMB"] as const;
   const lifecycleStages = ["TARGET", "LEAD", "OPPORTUNITY", "CUSTOMER", "EXPANSION"] as const;
 
@@ -392,97 +461,106 @@ async function main() {
     SMB: [500_000_000, 5_000_000_000],
   };
 
-  const companies: Array<{ id: string; companyName: string; lifecycleStage: string; ownerId: string }> = [];
+  const companies: Array<{ id: string; companyName: string; lifecycleStage: string; ownerId: string; type: string }> = [];
 
-  let companyIdx = 0;
-  let nameCounters: Record<string, number> = {};
-  for (const config of industryConfigs) {
-    const industryKey = config.industry.split("・")[0];
-    const nameList = companyNamesByIndustry[industryKey] ?? companyNamesByIndustry["IT・ソフトウェア"];
+  for (let companyIdx = 0; companyIdx < COMPANY_DATA.length; companyIdx++) {
+    const cd = COMPANY_DATA[companyIdx];
+    const tier = tierPool[companyIdx % tierPool.length];
+    const lifecycleStage = stagePool[companyIdx % stagePool.length];
+    const owner = salesUsers[companyIdx % salesUsers.length];
+    const accountManager = salesUsers[(companyIdx + 1) % salesUsers.length];
+    const isCustomer = lifecycleStage === "CUSTOMER" || lifecycleStage === "EXPANSION";
+    const csmUser = isCustomer ? csmUsers[companyIdx % csmUsers.length] : null;
 
-    for (let i = 0; i < config.count; i++) {
-      const tier = tierPool[companyIdx % tierPool.length];
-      const lifecycleStage = stagePool[companyIdx % stagePool.length];
-      const owner = salesUsers[companyIdx % salesUsers.length];
-      const accountManager = salesUsers[(companyIdx + 1) % salesUsers.length];
-      const isCustomer = lifecycleStage === "CUSTOMER" || lifecycleStage === "EXPANSION";
-      const csmUser = isCustomer ? csmUsers[companyIdx % csmUsers.length] : null;
+    const [minRev, maxRev] = annualRevenueByTier[tier];
+    const annualRevenue = randomBetween(minRev / 1_000_000, maxRev / 1_000_000) * 1_000_000;
 
-      const nameBase = nameList[i % nameList.length];
-      nameCounters[nameBase] = (nameCounters[nameBase] ?? 0) + 1;
-      const suffix = nameCounters[nameBase] > 1 ? ` ${nameCounters[nameBase]}` : "";
-      const prefix = prefixes[companyIdx % 2];
-      const companyName = `${prefix}${nameBase}${suffix}`;
-
-      const [minRev, maxRev] = annualRevenueByTier[tier];
-      const annualRevenue = randomBetween(minRev / 1_000_000, maxRev / 1_000_000) * 1_000_000;
-
-      let arr: number | null = null;
-      if (isCustomer) {
-        const arrRanges: Record<string, [number, number]> = {
-          STRATEGIC: [20_000_000, 500_000_000],
-          ENTERPRISE: [5_000_000, 50_000_000],
-          MID_MARKET: [1_000_000, 10_000_000],
-          SMB: [300_000, 3_000_000],
-        };
-        const [minArr, maxArr] = arrRanges[tier];
-        arr = randomBetween(minArr / 10_000, maxArr / 10_000) * 10_000;
-      }
-
-      const employeeSizes: Record<string, string[]> = {
-        STRATEGIC: ["5000名以上", "1000名以上"],
-        ENTERPRISE: ["1000名以上", "500-1000名"],
-        MID_MARKET: ["100-500名", "50-100名"],
-        SMB: ["10-50名", "50-100名"],
+    let arr: number | null = null;
+    if (isCustomer) {
+      const arrRanges: Record<string, [number, number]> = {
+        STRATEGIC: [20_000_000, 500_000_000],
+        ENTERPRISE: [5_000_000, 50_000_000],
+        MID_MARKET: [1_000_000, 10_000_000],
+        SMB: [300_000, 3_000_000],
       };
-      const employeeSize = pick(employeeSizes[tier]);
-      const healthScore = randomBetween(45, 95);
-
-      const company = await prisma.company.create({
-        data: {
-          companyName,
-          industry: config.industry,
-          subIndustry: config.subIndustry,
-          website: `https://${nameBase.toLowerCase().replace(/[・\s]/g, "")}.co.jp`,
-          employeeSize,
-          status: isCustomer ? "active" : "prospect",
-          type: isCustomer ? "CUSTOMER" : "PROSPECT",
-          ownerName: owner.name ?? undefined,
-          ownerId: owner.id,
-          accountManagerId: accountManager.id,
-          customerSuccessManagerId: csmUser?.id ?? undefined,
-          tier,
-          lifecycleStage,
-          annualRevenue,
-          arr: arr ?? undefined,
-          mrr: arr ? Math.floor(arr / 12) : undefined,
-          healthScore,
-          domain: `${nameBase.toLowerCase().replace(/[・\s]/g, "")}.co.jp`,
-          billingCountry: "日本",
-          billingPrefecture: pick(["東京都", "大阪府", "愛知県", "神奈川県", "福岡県", "北海道"]),
-          businessSummary: `${companyName}は${config.industry}業界のリーディングカンパニーです。`,
-          painPoints: ["業務効率化", "コスト削減", "デジタル変革"],
-          objectives: ["売上拡大", "顧客満足度向上", "DX推進"],
-          technologies: pick([["AWS", "Salesforce"], ["Azure", "SAP"], ["GCP", "Slack"], ["AWS", "kintone"]]),
-          openPipelineAmount: randomBetween(0, 50_000_000),
-          wonAmount: isCustomer ? randomBetween(1_000_000, 100_000_000) : 0,
-          renewalDate: isCustomer ? daysFromNow(randomBetween(30, 365)) : null,
-        },
-      });
-
-      companies.push({ id: company.id, companyName: company.companyName, lifecycleStage, ownerId: owner.id });
-      companyIdx++;
+      const [minArr, maxArr] = arrRanges[tier];
+      arr = randomBetween(minArr / 10_000, maxArr / 10_000) * 10_000;
     }
+
+    const employeeSizes: Record<string, string[]> = {
+      STRATEGIC: ["5000名以上", "1000名以上"],
+      ENTERPRISE: ["1000名以上", "500-1000名"],
+      MID_MARKET: ["100-500名", "50-100名"],
+      SMB: ["10-50名", "50-100名"],
+    };
+    const employeeSize = pick(employeeSizes[tier]);
+    const healthScore = isCustomer
+      ? (lifecycleStage === "EXPANSION" ? randomBetween(65, 95) : randomBetween(50, 90))
+      : null;
+    const companyType = isCustomer ? "CUSTOMER" : "PROSPECT";
+
+    const company = await prisma.company.create({
+      data: {
+        companyName: cd.name,
+        industry: cd.industry,
+        subIndustry: cd.subIndustry,
+        website: `https://${cd.domain}.example.jp`,
+        employeeSize,
+        status: isCustomer ? "active" : "prospect",
+        type: companyType,
+        ownerName: owner.name ?? undefined,
+        ownerId: owner.id,
+        accountManagerId: accountManager.id,
+        customerSuccessManagerId: csmUser?.id ?? undefined,
+        tier,
+        lifecycleStage,
+        annualRevenue,
+        arr: arr ?? undefined,
+        mrr: arr ? Math.floor(arr / 12) : undefined,
+        healthScore: healthScore ?? undefined,
+        domain: `${cd.domain}.example.jp`,
+        billingCountry: "日本",
+        billingPrefecture: pick(["東京都", "大阪府", "愛知県", "神奈川県", "福岡県", "北海道"]),
+        businessSummary: `${cd.name}は${cd.industry}業界のリーディングカンパニーです。`,
+        painPoints: ["業務効率化", "コスト削減", "デジタル変革"],
+        objectives: ["売上拡大", "顧客満足度向上", "DX推進"],
+        technologies: pick([["AWS", "Salesforce"], ["Azure", "SAP"], ["GCP", "Slack"], ["AWS", "kintone"]]),
+        openPipelineAmount: randomBetween(0, 50_000_000),
+        wonAmount: isCustomer ? randomBetween(1_000_000, 100_000_000) : 0,
+        renewalDate: isCustomer ? daysFromNow(randomBetween(30, 365)) : null,
+      },
+    });
+
+    companies.push({ id: company.id, companyName: company.companyName, lifecycleStage, ownerId: owner.id, type: companyType });
   }
 
   console.log(`✅ ${companies.length}社の企業を作成`);
 
-  // ===================== Contacts (250+) =====================
+  // ===================== Contacts (~280) =====================
   console.log("👥 コンタクトを作成中...");
 
-  const maleFirstNames = ["太郎", "健一", "大輔", "拓也", "誠", "翔", "康介", "俊介", "浩二", "雄太", "隆", "剛"];
-  const femaleFirstNames = ["花子", "美咲", "裕子", "恵子", "理恵", "奈緒", "さくら", "由美", "麻衣", "愛", "奈々", "有希"];
-  const lastNames = ["田中", "鈴木", "佐藤", "高橋", "山田", "伊藤", "渡辺", "加藤", "吉田", "中村", "小林", "山本", "松本", "井上", "木村", "橋本", "山口", "石田", "福田", "清水"];
+  // Contact name pools
+  const lastNames = ["佐藤", "鈴木", "高橋", "田中", "伊藤", "渡辺", "山本", "中村", "小林", "加藤", "吉田", "山田", "佐々木", "山口", "松本", "井上", "木村", "林", "清水", "山崎", "森", "池田", "橋本", "阿部", "石川", "前田", "藤田", "岡田", "長谷川", "村上"];
+  const maleFirstNames = ["太郎", "健一", "大輔", "拓也", "誠", "翔太", "直樹", "裕介", "和也", "俊介", "智也", "達也", "圭", "慎也", "亮"];
+  const femaleFirstNames = ["花子", "美咲", "優子", "彩", "由美", "恵", "真由", "葵", "千尋", "里奈", "麻衣", "奈々", "沙織", "愛", "美穂"];
+
+  // Romaji lookup for email addresses
+  const lastNameRomaji: Record<string, string> = {
+    "佐藤": "sato", "鈴木": "suzuki", "高橋": "takahashi", "田中": "tanaka", "伊藤": "ito",
+    "渡辺": "watanabe", "山本": "yamamoto", "中村": "nakamura", "小林": "kobayashi", "加藤": "kato",
+    "吉田": "yoshida", "山田": "yamada", "佐々木": "sasaki", "山口": "yamaguchi", "松本": "matsumoto",
+    "井上": "inoue", "木村": "kimura", "林": "hayashi", "清水": "shimizu", "山崎": "yamazaki",
+    "森": "mori", "池田": "ikeda", "橋本": "hashimoto", "阿部": "abe", "石川": "ishikawa",
+    "前田": "maeda", "藤田": "fujita", "岡田": "okada", "長谷川": "hasegawa", "村上": "murakami",
+  };
+  const firstNameRomaji: Record<string, string> = {
+    "太郎": "taro", "健一": "kenichi", "大輔": "daisuke", "拓也": "takuya", "誠": "makoto",
+    "翔太": "shota", "直樹": "naoki", "裕介": "yusuke", "和也": "kazuya", "俊介": "shunsuke",
+    "智也": "tomoya", "達也": "tatsuya", "圭": "kei", "慎也": "shinya", "亮": "ryo",
+    "花子": "hanako", "美咲": "misaki", "優子": "yuko", "彩": "aya", "由美": "yumi",
+    "恵": "megumi", "真由": "mayu", "葵": "aoi", "千尋": "chihiro", "里奈": "rina",
+    "麻衣": "mai", "奈々": "nana", "沙織": "saori", "愛": "ai", "美穂": "miho",
+  };
 
   const decisionRoles = ["意思決定者", "評価担当", "情シス担当", "現場担当", "購買担当"];
   const titlesByIndustry: Record<string, string[]> = {
@@ -503,23 +581,31 @@ async function main() {
 
   for (let ci = 0; ci < companies.length; ci++) {
     const company = companies[ci];
-    const numContacts = randomBetween(3, 5);
-    const industryKey = company.companyName.includes("テクノ") || company.companyName.includes("クラウド") || company.companyName.includes("デジタル") ? "IT・ソフトウェア" : "IT・ソフトウェア";
-
-    // Determine industry for title lookup
-    const industryTitles = titlesByIndustry["IT・ソフトウェア"];
+    const cd = COMPANY_DATA[ci];
+    const numContacts = 3 + (ci % 2); // 3 or 4 contacts per company
+    const industryTitles = titlesByIndustry[cd.industry] ?? titlesByIndustry["IT・ソフトウェア"];
 
     const contactsForCompany: string[] = [];
 
     for (let j = 0; j < numContacts; j++) {
-      const isMale = (ci + j) % 2 === 0;
-      const firstName = isMale ? maleFirstNames[(ci * 3 + j) % maleFirstNames.length] : femaleFirstNames[(ci * 3 + j) % femaleFirstNames.length];
-      const lastName = lastNames[(ci + j * 7) % lastNames.length];
+      // Deterministic name selection using prime-based indexing to avoid duplicates
+      const lastNameIdx = (ci * 7 + j * 13) % lastNames.length;
+      const isMale = (ci + j) % 3 !== 0;
+      const firstNamePool = isMale ? maleFirstNames : femaleFirstNames;
+      const firstNameIdx = (ci * 11 + j * 17) % firstNamePool.length;
+
+      const lastName = lastNames[lastNameIdx];
+      const firstName = firstNamePool[firstNameIdx];
       const fullName = `${lastName} ${firstName}`;
+
+      const lastRomaji = lastNameRomaji[lastName] ?? "contact";
+      const firstRomaji = firstNameRomaji[firstName] ?? "user";
+
       const roleInDecision = decisionRoles[j % decisionRoles.length];
-      const title = j === 0 ? industryTitles[ci % industryTitles.length] : ["課長", "担当者", "主任", "マネージャー", "シニアエンジニア"][j % 5];
+      const title = j === 0
+        ? industryTitles[ci % industryTitles.length]
+        : ["課長", "主任", "マネージャー", "シニアエンジニア", "スペシャリスト"][j % 5];
       const dept = ["情報システム部", "経営企画部", "IT推進部", "購買部", "業務改革室", "DX推進部"][j % 6];
-      const emailDomain = company.companyName.replace(/株式会社|有限会社/g, "").toLowerCase().replace(/[\s・]/g, "");
 
       const contact = await prisma.contact.create({
         data: {
@@ -527,8 +613,8 @@ async function main() {
           fullName,
           firstName,
           lastName,
-          email: `${lastName.toLowerCase()}${j > 0 ? j : ""}@${emailDomain}.co.jp`,
-          phone: `0${randomBetween(3, 9)}-${randomBetween(1000, 9999)}-${randomBetween(1000, 9999)}`,
+          email: `${firstRomaji}.${lastRomaji}@${cd.domain}.example.jp`,
+          phone: `0${3 + (ci % 7)}-${String(1000 + ci * 3 + j).padStart(4, "0")}-${String(2000 + ci + j * 7).padStart(4, "0")}`,
           department: dept,
           title,
           roleInDecision,
@@ -540,7 +626,6 @@ async function main() {
 
       contacts.push({ id: contact.id, companyId: company.id });
       contactsForCompany.push(contact.id);
-      void industryKey;
     }
 
     companyContacts.set(company.id, contactsForCompany);
@@ -548,7 +633,7 @@ async function main() {
 
   console.log(`✅ ${contacts.length}件のコンタクトを作成`);
 
-  // ===================== Deals (180) =====================
+  // ===================== Deals (~190) =====================
   console.log("💼 商談を作成中...");
 
   interface DealConfig {
@@ -566,20 +651,20 @@ async function main() {
   }
 
   const dealConfigs: DealConfig[] = [
-    { stage: "prospecting", count: 30, probMin: 5, probMax: 15, amountMin: 500_000, amountMax: 20_000_000, forecastCategory: "PIPELINE", closeDateOffsetMin: 60, closeDateOffsetMax: 180 },
-    { stage: "discovery", count: 35, probMin: 20, probMax: 35, amountMin: 1_000_000, amountMax: 50_000_000, forecastCategory: "PIPELINE", closeDateOffsetMin: 45, closeDateOffsetMax: 150 },
-    { stage: "proposal", count: 30, probMin: 40, probMax: 60, amountMin: 2_000_000, amountMax: 80_000_000, forecastCategory: "PIPELINE", closeDateOffsetMin: 30, closeDateOffsetMax: 120 },
-    { stage: "negotiation", count: 20, probMin: 65, probMax: 80, amountMin: 5_000_000, amountMax: 150_000_000, forecastCategory: "BEST_CASE", closeDateOffsetMin: 15, closeDateOffsetMax: 60 },
-    { stage: "won", count: 30, probMin: 100, probMax: 100, amountMin: 3_000_000, amountMax: 100_000_000, forecastCategory: "CLOSED", closeDateOffsetMin: -90, closeDateOffsetMax: -1, isWon: true },
-    { stage: "lost", count: 20, probMin: 0, probMax: 0, amountMin: 1_000_000, amountMax: 50_000_000, forecastCategory: "CLOSED", closeDateOffsetMin: -60, closeDateOffsetMax: -1, isLost: true },
-    { stage: "closing", count: 15, probMin: 85, probMax: 95, amountMin: 10_000_000, amountMax: 200_000_000, forecastCategory: "COMMIT", closeDateOffsetMin: 7, closeDateOffsetMax: 45 },
+    { stage: "qualification",     count: 30, probMin: 5,  probMax: 15, amountMin: 500_000,    amountMax: 20_000_000,  forecastCategory: "PIPELINE",  closeDateOffsetMin: 60,  closeDateOffsetMax: 180 },
+    { stage: "needs_analysis",    count: 30, probMin: 20, probMax: 35, amountMin: 1_000_000,  amountMax: 50_000_000,  forecastCategory: "PIPELINE",  closeDateOffsetMin: 45,  closeDateOffsetMax: 150 },
+    { stage: "value_proposition", count: 20, probMin: 35, probMax: 50, amountMin: 1_500_000,  amountMax: 60_000_000,  forecastCategory: "PIPELINE",  closeDateOffsetMin: 40,  closeDateOffsetMax: 130 },
+    { stage: "proposal",          count: 25, probMin: 40, probMax: 60, amountMin: 2_000_000,  amountMax: 80_000_000,  forecastCategory: "PIPELINE",  closeDateOffsetMin: 30,  closeDateOffsetMax: 120 },
+    { stage: "negotiation",       count: 20, probMin: 65, probMax: 80, amountMin: 5_000_000,  amountMax: 150_000_000, forecastCategory: "BEST_CASE", closeDateOffsetMin: 15,  closeDateOffsetMax: 60 },
+    { stage: "final_review",      count: 15, probMin: 85, probMax: 95, amountMin: 10_000_000, amountMax: 200_000_000, forecastCategory: "COMMIT",    closeDateOffsetMin: 7,   closeDateOffsetMax: 45 },
+    { stage: "won",               count: 30, probMin: 100,probMax: 100,amountMin: 3_000_000,  amountMax: 100_000_000, forecastCategory: "CLOSED",    closeDateOffsetMin: -90, closeDateOffsetMax: -1, isWon: true },
+    { stage: "lost",              count: 20, probMin: 0,  probMax: 0,  amountMin: 1_000_000,  amountMax: 50_000_000,  forecastCategory: "CLOSED",    closeDateOffsetMin: -60, closeDateOffsetMax: -1, isLost: true },
   ];
 
   const lostReasons = ["価格が合わなかった", "競合他社に負けた", "予算凍結", "担当者変更", "導入延期", "要件不一致"];
   const riskLevels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 
-  // Owner distribution weights: sales1=310, sales2=260, sales4=250, sales3=200, sales5=180, sales6=140
-  // We'll assign deals weighted accordingly
+  // Owner distribution weights
   const dealOwnerPool: typeof salesUsers[number][] = [
     ...Array(30).fill(sales1),
     ...Array(25).fill(sales2),
@@ -589,6 +674,21 @@ async function main() {
     ...Array(14).fill(sales6),
     ...Array(12).fill(manager1),
     ...Array(12).fill(manager2),
+  ];
+
+  const dealNameTemplates = [
+    (cn: string) => `${cn} 顧客管理基盤刷新プロジェクト`,
+    (cn: string) => `${cn} 営業支援ツール導入`,
+    (cn: string) => `${cn} MA連携システム構築`,
+    (cn: string) => `${cn} データ分析基盤導入`,
+    (cn: string) => `${cn} 契約管理システム刷新`,
+    (cn: string) => `${cn} 問い合わせ管理高度化`,
+    (cn: string) => `${cn} 受発注業務デジタル化`,
+    (cn: string) => `${cn} 会員管理システム更新`,
+    (cn: string) => `${cn} ERP連携プロジェクト`,
+    (cn: string) => `${cn} カスタマーサポート基盤導入`,
+    (cn: string) => `${cn} 営業レポート自動化`,
+    (cn: string) => `${cn} セキュリティ監査対応`,
   ];
 
   const deals: Array<{ id: string; companyId: string; stage: string; ownerId: string }> = [];
@@ -610,19 +710,7 @@ async function main() {
         ? daysAgo(randomBetween(1, 90))
         : (dealIdx % 5 < 4 ? daysAgo(randomBetween(0, 30)) : (dealIdx % 10 < 1 ? null : daysAgo(randomBetween(31, 90))));
 
-      const dealNameTemplates = [
-        `${company.companyName} CRM導入プロジェクト`,
-        `${company.companyName} DXソリューション提案`,
-        `${company.companyName} システム刷新`,
-        `${company.companyName} 業務効率化支援`,
-        `${company.companyName} データ活用基盤構築`,
-        `${company.companyName} クラウド移行支援`,
-        `${company.companyName} MAツール導入`,
-        `${company.companyName} SFA刷新提案`,
-        `${company.companyName} AI活用推進`,
-        `${company.companyName} セキュリティ強化`,
-      ];
-      const dealName = dealNameTemplates[dealIdx % dealNameTemplates.length];
+      const dealName = dealNameTemplates[dealIdx % dealNameTemplates.length](company.companyName);
 
       const deal = await prisma.deal.create({
         data: {
@@ -901,7 +989,7 @@ async function main() {
 
   console.log("✅ 500件のタスクを作成");
 
-  // ===================== Cases (150) =====================
+  // ===================== Cases (CUSTOMER/EXPANSION only) =====================
   console.log("📁 ケースを作成中...");
 
   const caseSubjects = [
@@ -916,30 +1004,105 @@ async function main() {
   const caseTypes = ["Question", "Bug", "Feature Request", "Other"] as const;
   const caseOrigins = ["Email", "Phone", "Web", "Chat"] as const;
 
-  const allCaseData = [];
-  for (let i = 0; i < 150; i++) {
-    const company = companies[i % companies.length];
-    const status = caseStatuses[i % caseStatuses.length];
-    const year = 2026;
-    const caseNumber = `C-${year}-${String(i + 1).padStart(4, "0")}`;
+  // Only create cases for CUSTOMER and EXPANSION companies
+  const customerCompanies = companies.filter(c => c.lifecycleStage === "CUSTOMER" || c.lifecycleStage === "EXPANSION");
 
-    allCaseData.push({
-      caseNumber,
-      subject: `${caseSubjects[i % caseSubjects.length]} (#${i + 1})`,
-      description: `${company.companyName}より報告。詳細な再現手順と環境情報を確認中。`,
-      status,
-      priority: casePriorities[i % casePriorities.length],
-      type: caseTypes[i % caseTypes.length],
-      origin: caseOrigins[i % caseOrigins.length],
-      companyId: company.id,
-      ownerId: salesUsers[i % salesUsers.length].id,
-      resolvedAt: status === "Closed" ? daysAgo(randomBetween(1, 30)) : null,
-      resolution: status === "Closed" ? "設定を修正して問題を解決しました。" : null,
-    });
+  const allCaseData = [];
+  let caseCounter = 0;
+  for (let ci = 0; ci < customerCompanies.length; ci++) {
+    const company = customerCompanies[ci];
+    const maxCases = company.lifecycleStage === "EXPANSION" ? 6 : 5;
+    const numCases = 1 + (ci % maxCases); // 1 to maxCases cases per company
+    for (let j = 0; j < numCases; j++) {
+      caseCounter++;
+      const status = caseStatuses[(ci + j) % caseStatuses.length];
+      const caseNumber = `C-2026-${String(caseCounter).padStart(4, "0")}`;
+      allCaseData.push({
+        caseNumber,
+        subject: caseSubjects[(ci * 3 + j) % caseSubjects.length],
+        description: `${company.companyName}より報告。詳細な再現手順と環境情報を確認中。`,
+        status,
+        priority: casePriorities[(ci + j) % casePriorities.length],
+        type: caseTypes[(ci + j) % caseTypes.length],
+        origin: caseOrigins[(ci + j) % caseOrigins.length],
+        companyId: company.id,
+        ownerId: salesUsers[(ci + j) % salesUsers.length].id,
+        resolvedAt: status === "Closed" ? daysAgo(randomBetween(1, 30)) : null,
+        resolution: status === "Closed" ? "設定を修正して問題を解決しました。" : null,
+      });
+    }
   }
   await prisma.case.createMany({ data: allCaseData });
 
-  console.log("✅ 150件のケースを作成");
+  console.log(`✅ ${allCaseData.length}件のケースを作成`);
+
+  // ===================== Contracts (CUSTOMER/EXPANSION only) =====================
+  console.log("📄 契約を作成中...");
+
+  const contractStatuses = ["Active", "Draft", "Expired"] as const;
+  let contractCounter = 0;
+  for (let ci = 0; ci < customerCompanies.length; ci++) {
+    const company = customerCompanies[ci];
+    const maxContracts = company.lifecycleStage === "EXPANSION" ? 3 : 3;
+    const numContracts = 1 + (ci % maxContracts); // 1 to 3
+    for (let j = 0; j < numContracts; j++) {
+      contractCounter++;
+      const contractNumber = `CON-2026-${String(contractCounter).padStart(4, "0")}`;
+      // First contract is always Active; extras may be Draft or Expired for CUSTOMER
+      let status: string;
+      if (j === 0) {
+        status = "Active";
+      } else if (company.lifecycleStage === "EXPANSION") {
+        status = "Active";
+      } else {
+        status = contractStatuses[1 + (j % 2)]; // Draft or Expired
+      }
+      const startDate = daysAgo(randomBetween(30, 365));
+      const endDate = status === "Expired"
+        ? daysAgo(randomBetween(1, 90))
+        : daysFromNow(randomBetween(30, 365));
+      await prisma.contract.create({
+        data: {
+          companyId: company.id,
+          name: `${company.companyName} ${["年間保守契約", "SaaS利用契約", "システム導入契約"][j % 3]}`,
+          contractNumber,
+          status,
+          startDate,
+          endDate,
+          contractValue: randomBetween(500_000, 50_000_000),
+          ownerId: company.ownerId,
+        },
+      });
+    }
+  }
+  console.log(`✅ ${contractCounter}件の契約を作成`);
+
+  // ===================== Orders (CUSTOMER/EXPANSION only) =====================
+  console.log("🛒 注文を作成中...");
+
+  const orderStatuses = ["Activated", "Draft", "Cancelled"] as const;
+  let orderCounter = 0;
+  for (let ci = 0; ci < customerCompanies.length; ci++) {
+    const company = customerCompanies[ci];
+    const maxOrders = company.lifecycleStage === "EXPANSION" ? 5 : 4;
+    const numOrders = 1 + (ci % maxOrders); // 1 to maxOrders
+    for (let j = 0; j < numOrders; j++) {
+      orderCounter++;
+      const orderNumber = `ORD-2026-${String(orderCounter).padStart(4, "0")}`;
+      const status = orderStatuses[(ci + j) % orderStatuses.length];
+      await prisma.order.create({
+        data: {
+          companyId: company.id,
+          orderNumber,
+          status,
+          orderDate: daysAgo(randomBetween(1, 180)),
+          totalAmount: randomBetween(100_000, 10_000_000),
+          ownerId: company.ownerId,
+        },
+      });
+    }
+  }
+  console.log(`✅ ${orderCounter}件の注文を作成`);
 
   // ===================== Reports (10) =====================
   console.log("📊 レポートを作成中...");
@@ -952,7 +1115,7 @@ async function main() {
       description: "全商談のパイプライン一覧",
       sortField: "expectedCloseDate",
       sortDir: "asc",
-      filters: [{ field: "stage", operator: "not_in", value: ["won", "lost"] }],
+      filters: [{ field: "stage", operator: "not_in", value: ["won", "lost"] as string[] }],
     },
     {
       name: "ステージ別商談サマリー",
@@ -1019,7 +1182,7 @@ async function main() {
       sortField: "amount",
       sortDir: "desc",
       groupBy: "owner.name",
-      filters: [{ field: "stage", operator: "not_in", value: ["won", "lost"] }],
+      filters: [{ field: "stage", operator: "not_in", value: ["won", "lost"] as string[] }],
     },
     {
       name: "活動なし商談レポート",

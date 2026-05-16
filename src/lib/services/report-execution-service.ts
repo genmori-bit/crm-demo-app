@@ -34,14 +34,26 @@ export function getDateRange(dateRange: string): { gte?: Date; lte?: Date } {
   }
 }
 
-const STAGE_ORDER = ["prospecting", "discovery", "proposal", "negotiation", "closing", "won", "lost"];
+const STAGE_ORDER = ["qualification", "needs_analysis", "value_proposition", "proposal", "negotiation", "final_review", "won", "lost"];
 const STAGE_LABELS: Record<string, string> = {
-  prospecting: "案件化", discovery: "ヒアリング", proposal: "提案",
-  negotiation: "交渉", closing: "最終調整", won: "受注", lost: "失注",
+  qualification:     "初期確認",
+  needs_analysis:    "課題確認",
+  value_proposition: "価値提案",
+  proposal:          "提案",
+  negotiation:       "交渉",
+  final_review:      "最終確認",
+  won:               "受注",
+  lost:              "失注",
 };
 const STAGE_COLORS: Record<string, string> = {
-  prospecting: "#706e6b", discovery: "#dd7a01", proposal: "#0176d3",
-  negotiation: "#6b34b0", closing: "#0e7490", won: "#2e844a", lost: "#ea001e",
+  qualification:     "#706e6b",
+  needs_analysis:    "#dd7a01",
+  value_proposition: "#e57200",
+  proposal:          "#0176d3",
+  negotiation:       "#6b34b0",
+  final_review:      "#0e7490",
+  won:               "#2e844a",
+  lost:              "#ea001e",
 };
 const CHART_COLORS = ["#0176d3","#2e844a","#dd7a01","#6b34b0","#ea001e","#0e7490","#0f766e","#7c3aed","#be185d","#b45309"];
 

@@ -137,6 +137,35 @@ interface Company {
   };
 }
 
+// ── Lifecycle helpers ─────────────────────────────────────────────────────
+
+const CUSTOMER_STAGES = new Set(["CUSTOMER", "EXPANSION", "RENEWAL", "CUSTOMER_ONBOARDING", "ACTIVE_CUSTOMER"]);
+
+/** 顧客企業かどうか (typeまたはlifecycleStageで判定) */
+function isCustomerCompany(company: { type?: string; lifecycleStage?: string | null }): boolean {
+  return company.type === "CUSTOMER" || CUSTOMER_STAGES.has(company.lifecycleStage ?? "");
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  PROSPECT: "見込み企業",
+  CUSTOMER: "顧客企業",
+  PARTNER:  "パートナー",
+  VENDOR:   "仕入先",
+};
+
+const LIFECYCLE_LABEL: Record<string, string> = {
+  TARGET:             "ターゲット",
+  LEAD:               "見込み",
+  OPPORTUNITY:        "商談中",
+  CUSTOMER:           "顧客",
+  CUSTOMER_ONBOARDING:"オンボーディング中",
+  ACTIVE_CUSTOMER:    "アクティブ顧客",
+  EXPANSION:          "拡大中",
+  RENEWAL:            "更新対象",
+  DORMANT:            "休眠",
+  CHURNED:            "解約済み",
+};
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -168,13 +197,14 @@ const STATUS_MAP: Record<string, { label: string; variant: "muted" | "info" | "w
 };
 
 const DEAL_STAGE_MAP: Record<string, { label: string; variant: "muted" | "info" | "warning" | "success" | "danger" }> = {
-  prospecting: { label: "案件化",   variant: "muted" },
-  discovery:   { label: "ヒアリング", variant: "info" },
-  proposal:    { label: "提案",     variant: "info" },
-  negotiation: { label: "交渉",     variant: "warning" },
-  closing:     { label: "最終調整", variant: "warning" },
-  won:         { label: "受注",     variant: "success" },
-  lost:        { label: "失注",     variant: "danger" },
+  qualification:     { label: "初期確認",   variant: "muted" },
+  needs_analysis:    { label: "課題確認",   variant: "info" },
+  value_proposition: { label: "価値提案",   variant: "info" },
+  proposal:          { label: "提案",       variant: "info" },
+  negotiation:       { label: "交渉",       variant: "warning" },
+  final_review:      { label: "最終確認",   variant: "warning" },
+  won:               { label: "受注",       variant: "success" },
+  lost:              { label: "失注",       variant: "danger" },
 };
 
 const TEAM_ROLE_MAP: Record<string, string> = {
@@ -405,28 +435,53 @@ function OverviewTab({
 
       {/* ── Right sidebar (1/3) ── */}
       <div className="space-y-4">
-        {/* Health */}
-        <LightningCard>
-          <LightningCardHeader title="取引先ヘルス" />
-          <LightningCardBody>
-            <div className="text-center mb-4">
-              <p className={`text-5xl font-bold tabular-nums ${healthColor}`}>
-                {company.healthScore ?? "—"}
-              </p>
-              <p className="text-xs text-sf-weak mt-1">ヘルススコア</p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-sf-weak">フィットスコア</span>
-                <span className="font-semibold text-sf-text">{company.fitScore ?? "—"}</span>
+        {/* Health — 顧客企業のみ表示 */}
+        {isCustomerCompany(company) ? (
+          <LightningCard>
+            <LightningCardHeader title="取引先ヘルス" />
+            <LightningCardBody>
+              <div className="text-center mb-4">
+                <p className={`text-5xl font-bold tabular-nums ${healthColor}`}>
+                  {company.healthScore ?? "—"}
+                </p>
+                <p className="text-xs text-sf-weak mt-1">ヘルススコア</p>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-sf-weak">エンゲージメント</span>
-                <span className="font-semibold text-sf-text">{company.engagementScore ?? "—"}</span>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-sf-weak">フィットスコア</span>
+                  <span className="font-semibold text-sf-text">{company.fitScore ?? "—"}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-sf-weak">エンゲージメント</span>
+                  <span className="font-semibold text-sf-text">{company.engagementScore ?? "—"}</span>
+                </div>
               </div>
-            </div>
-          </LightningCardBody>
-        </LightningCard>
+            </LightningCardBody>
+          </LightningCard>
+        ) : (
+          <LightningCard>
+            <LightningCardHeader title="営業進捗" />
+            <LightningCardBody>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-sf-weak">ステージ</span>
+                  <span className="font-semibold text-sf-text">{LIFECYCLE_LABEL[company.lifecycleStage ?? ""] ?? "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sf-weak">進行中商談</span>
+                  <span className="font-semibold text-sf-text">{openDeals.length}件</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sf-weak">パイプライン</span>
+                  <span className="font-semibold text-sf-text">
+                    {openDeals.reduce((s, d) => s + (d.amount ?? 0), 0).toLocaleString("ja-JP")}円
+                  </span>
+                </div>
+                <p className="text-sf-weak pt-1">ヘルススコアは顧客化後に表示されます</p>
+              </div>
+            </LightningCardBody>
+          </LightningCard>
+        )}
 
         {/* Key contacts */}
         <LightningCard>
@@ -1010,6 +1065,24 @@ function ContractsTab({ company }: { company: Company }) {
     Draft:     "info",
   };
 
+  // 顧客化前の企業は契約を持たない
+  if (!isCustomerCompany(company)) {
+    return (
+      <div className="p-6">
+        <LightningCard>
+          <LightningCardBody>
+            <div className="py-8 text-center">
+              <p className="text-sm font-medium text-sf-text">受注後に契約・注文が表示されます</p>
+              <p className="text-xs text-sf-weak mt-1">
+                {LIFECYCLE_LABEL[company.lifecycleStage ?? ""] ?? "見込み"}段階のため、契約・注文はありません。
+              </p>
+            </div>
+          </LightningCardBody>
+        </LightningCard>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-4">
       {/* Metrics */}
@@ -1131,14 +1204,34 @@ function ContractsTab({ company }: { company: Company }) {
 function SupportTab({ company }: { company: Company }) {
   const cases = company.cases ?? [];
   const openCases   = cases.filter((c) => c.status !== "Closed");
-  const criticalCases = cases.filter((c) => c.priority === "CRITICAL" || c.priority === "HIGH");
+  const criticalCases = cases.filter((c) => c.priority === "CRITICAL" || c.priority === "HIGH" || c.priority === "Critical" || c.priority === "High");
 
   const PRIORITY_VARIANT: Record<string, "danger" | "warning" | "muted"> = {
     CRITICAL: "danger", HIGH: "danger", MEDIUM: "warning", LOW: "muted",
+    Critical: "danger", High: "danger", Medium: "warning", Low: "muted",
   };
   const PRIORITY_LABEL: Record<string, string> = {
     CRITICAL: "緊急", HIGH: "高", MEDIUM: "中", LOW: "低",
+    Critical: "緊急", High: "高", Medium: "中", Low: "低",
   };
+
+  // 顧客化前の企業はサポートケースを持たない
+  if (!isCustomerCompany(company)) {
+    return (
+      <div className="p-6">
+        <LightningCard>
+          <LightningCardBody>
+            <div className="py-8 text-center">
+              <p className="text-sm font-medium text-sf-text">この取引先はまだ顧客化していないため、サポートケースはありません</p>
+              <p className="text-xs text-sf-weak mt-1">
+                受注・オンボーディング完了後にサポートケースが作成されます。
+              </p>
+            </div>
+          </LightningCardBody>
+        </LightningCard>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-4">
@@ -1498,7 +1591,10 @@ export default function CompanyDetailPage() {
               <h1 className="text-xl font-bold text-sf-text leading-tight">{company.companyName}</h1>
               <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                 {statusInfo && <Badge variant={statusInfo.variant} dot>{statusInfo.label}</Badge>}
-                {company.type && <Badge variant="muted">{company.type}</Badge>}
+                {company.type && <Badge variant={isCustomerCompany(company) ? "success" : "info"}>{TYPE_LABEL[company.type] ?? company.type}</Badge>}
+                {company.lifecycleStage && LIFECYCLE_LABEL[company.lifecycleStage] && (
+                  <Badge variant="muted">{LIFECYCLE_LABEL[company.lifecycleStage]}</Badge>
+                )}
                 {company.industry && <span className="text-xs text-sf-weak">{company.industry}</span>}
                 {tierInfo && <Badge variant={tierInfo.variant}>{tierInfo.label}</Badge>}
               </div>
@@ -1531,26 +1627,26 @@ export default function CompanyDetailPage() {
           </div>
         </div>
 
-        {/* Metrics strip */}
+        {/* Metrics strip — lifecycle-aware */}
         <div className="px-6 pb-4 pt-3 border-t border-sf-border/60">
           <MetricStrip
-            items={[
+            items={isCustomerCompany(company) ? [
+              // 顧客企業向けKPI
+              {
+                label: "ARR",
+                value: fmtCompact(company.arr),
+                sub: company.arr ? `MRR ${fmtCompact(company.mrr)}` : "—",
+                emphasis: "high",
+              },
               {
                 label: "パイプライン",
                 value: fmtCompact(rollup.openPipelineAmount),
                 sub: `進行中 ${rollup.openDealsCount}件`,
-                emphasis: "high",
-                href: "#",
+                emphasis: "medium",
               },
               {
-                label: "ARR",
-                value: fmtCompact(company.arr ?? 0),
-                sub: company.arr ? fmtCurrency(company.arr) : "—",
-                emphasis: "high",
-              },
-              {
-                label: "受注金額",
-                value: fmtCompact(rollup.wonAmount),
+                label: "アクティブ契約",
+                value: `${rollup.activeContractsCount}件`,
                 emphasis: "medium",
               },
               {
@@ -1562,14 +1658,38 @@ export default function CompanyDetailPage() {
               },
               {
                 label: "ヘルススコア",
-                value: company.healthScore ?? "—",
-                sub: company.healthScore != null ? healthLabel : undefined,
+                value: company.healthScore != null ? String(company.healthScore) : "—",
+                sub: company.healthScore != null ? healthLabel : "データなし",
                 tone: healthAccent === "danger" ? "danger" : healthAccent === "warning" ? "warning" : "success",
                 emphasis: "medium",
               },
               {
-                label: "アクティブ契約",
-                value: `${rollup.activeContractsCount}件`,
+                label: "受注累計",
+                value: fmtCompact(rollup.wonAmount),
+                emphasis: "low",
+              },
+            ] : [
+              // 見込み・プロスペクト企業向けKPI
+              {
+                label: "パイプライン",
+                value: fmtCompact(rollup.openPipelineAmount),
+                sub: `進行中 ${rollup.openDealsCount}件`,
+                emphasis: "high",
+              },
+              {
+                label: "リード数",
+                value: `${rollup.highScoreLeadsCount}件`,
+                sub: "スコア70以上",
+                emphasis: "medium",
+              },
+              {
+                label: "コンタクト数",
+                value: `${rollup.contactsCount}名`,
+                emphasis: "medium",
+              },
+              {
+                label: "最終活動",
+                value: company.lastActivityAt ? fmtDate(company.lastActivityAt) : "—",
                 emphasis: "low",
               },
             ]}

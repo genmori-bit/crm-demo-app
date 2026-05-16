@@ -21,13 +21,14 @@ const companyStatusVariants: Record<CompanyStatus, BadgeVariant> = {
 };
 
 const dealStageVariants: Record<DealStage, BadgeVariant> = {
-  prospecting: "muted",
-  discovery: "brand",
-  proposal: "info",
-  negotiation: "warning",
-  closing: "info",
-  won: "success",
-  lost: "danger",
+  qualification:     "muted",
+  needs_analysis:    "brand",
+  value_proposition: "brand",
+  proposal:          "info",
+  negotiation:       "warning",
+  final_review:      "info",
+  won:               "success",
+  lost:              "danger",
 };
 
 const activityTypeVariants: Record<ActivityType, BadgeVariant> = {

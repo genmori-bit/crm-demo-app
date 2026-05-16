@@ -58,13 +58,14 @@ interface DashboardData {
 }
 
 const STAGE_COLORS: Record<string, string> = {
-  prospecting: "#706e6b",
-  discovery: "#dd7a01",
-  proposal: "#0176d3",
-  negotiation: "#6b34b0",
-  closing: "#0e7490",
-  won: "#2e844a",
-  lost: "#ba0517",
+  qualification:     "#706e6b",
+  needs_analysis:    "#dd7a01",
+  value_proposition: "#e57200",
+  proposal:          "#0176d3",
+  negotiation:       "#6b34b0",
+  final_review:      "#0e7490",
+  won:               "#2e844a",
+  lost:              "#ba0517",
 };
 
 const COMPANY_STATUS_COLORS: Record<string, string> = {
@@ -166,7 +167,7 @@ export default function DashboardPage() {
     );
   }
 
-  const stageAmountData = (["prospecting", "discovery", "proposal", "negotiation", "closing"] as const).map((stage) => {
+  const stageAmountData = (["qualification", "needs_analysis", "value_proposition", "proposal", "negotiation", "final_review"] as const).map((stage) => {
     const s = data.dealsByStage.find((d) => d.stage === stage);
     return {
       label: DEAL_STAGE_LABELS[stage],

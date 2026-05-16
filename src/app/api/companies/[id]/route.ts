@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
             owner: { select: { id: true, name: true } },
             deal: { select: { id: true, dealName: true } },
           },
-          take: 30,
+          take: 50,
         },
         tasks: {
           where: { status: { not: "done" } },
@@ -38,6 +38,33 @@ export async function GET(_req: NextRequest, { params }: Params) {
           include: {
             assignee: { select: { id: true, name: true } },
           },
+        },
+        cases: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        },
+        contracts: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        },
+        orders: {
+          where: { deletedAt: null },
+          orderBy: { orderDate: "desc" },
+          take: 20,
+        },
+        leads: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        },
+        campaignMembers: {
+          include: {
+            campaign: { select: { id: true, name: true, status: true, type: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
         },
         accountTeamMembers: {
           include: {
@@ -84,13 +111,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
       },
     }),
     Promise.all([
-      prisma.contact.count({ where: { companyId: id } }),
-      prisma.deal.count({ where: { companyId: id, stage: { notIn: ["won", "lost"] } } }),
-      prisma.deal.aggregate({ where: { companyId: id, stage: { notIn: ["won", "lost"] } }, _sum: { amount: true } }),
-      prisma.deal.aggregate({ where: { companyId: id, stage: "won" }, _sum: { amount: true } }),
-      prisma.case.count({ where: { companyId: id, status: { notIn: ["Closed"] } } }),
-      prisma.contract.count({ where: { companyId: id, status: "Active" } }),
-      prisma.lead.count({ where: { companyId: id, score: { gte: 70 }, convertedAt: null } }),
+      prisma.contact.count({ where: { companyId: id, deletedAt: null } }),
+      prisma.deal.count({ where: { companyId: id, stage: { notIn: ["won", "lost"] }, deletedAt: null } }),
+      prisma.deal.aggregate({ where: { companyId: id, stage: { notIn: ["won", "lost"] }, deletedAt: null }, _sum: { amount: true } }),
+      prisma.deal.aggregate({ where: { companyId: id, stage: "won", deletedAt: null }, _sum: { amount: true } }),
+      prisma.case.count({ where: { companyId: id, status: { notIn: ["Closed"] }, deletedAt: null } }),
+      prisma.contract.count({ where: { companyId: id, status: "Active", deletedAt: null } }),
+      prisma.lead.count({ where: { companyId: id, score: { gte: 70 }, convertedAt: null, deletedAt: null } }),
     ]),
   ]);
 
@@ -106,16 +133,30 @@ export async function GET(_req: NextRequest, { params }: Params) {
     highScoreLeadsCount,
   ] = rollup;
 
+  // Map campaignMembers → campaigns for page consumption
+  const campaigns = (company.campaignMembers ?? [])
+    .map((m) => m.campaign)
+    .filter(Boolean);
+
+  // Compute counts from included records so KPI === list count
+  const activeCasesFromList  = (company.cases ?? []).filter((c) => c.status !== "Closed").length;
+  const activeContractsFromList = (company.contracts ?? []).filter((c) => c.status === "Active").length;
+
   return NextResponse.json({
     ...company,
+    campaigns,
     _rollup: {
       contactsCount,
       openDealsCount,
       openPipelineAmount: openPipelineResult._sum.amount ?? 0,
       wonAmount: wonAmountResult._sum.amount ?? 0,
-      activeCasesCount,
-      activeContractsCount,
+      // Use list-derived counts so KPI matches the displayed list
+      activeCasesCount: activeCasesFromList,
+      activeContractsCount: activeContractsFromList,
       highScoreLeadsCount,
+      // Also expose the direct counts from dedicated queries
+      activeCasesCountDb: activeCasesCount,
+      activeContractsCountDb: activeContractsCount,
     },
   });
 }
