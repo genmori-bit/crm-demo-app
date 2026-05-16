@@ -149,23 +149,18 @@ export default function ContactsPage() {
                 className="border-b border-sf-border/60 hover:bg-info-light/30 cursor-pointer transition-colors group"
                 onClick={() => router.push(`/contacts/${c.id}`)}
               >
-                <td className="px-6 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-primary-100 border border-primary-200 flex items-center justify-center shrink-0">
-                      <span className="text-2xs font-bold text-primary-700">{c.fullName[0]}</span>
-                    </div>
-                    <div>
-                      <Link
-                        href={`/contacts/${c.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="font-semibold text-primary-600 hover:underline hover:text-primary-700"
-                      >
-                        {c.fullName}
-                      </Link>
-                      {c.isPrimary && (
-                        <span className="ml-1.5 text-2xs text-primary-600 font-semibold bg-info-light border border-info-border px-1.5 py-0.5 rounded">主担当</span>
-                      )}
-                    </div>
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Link
+                      href={`/contacts/${c.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-semibold text-primary-600 hover:underline hover:text-primary-700 text-sm"
+                    >
+                      {c.fullName}
+                    </Link>
+                    {c.isPrimary && (
+                      <span className="text-2xs text-primary-600 font-medium bg-info-light border border-info-border px-1 py-0.5 rounded whitespace-nowrap">主担当</span>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3">

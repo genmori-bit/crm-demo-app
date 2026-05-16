@@ -502,20 +502,19 @@ function OverviewTab({
           ) : (
             <ul className="divide-y divide-sf-border">
               {topContacts.map((c) => (
-                <li key={c.id} className="px-4 py-2.5 flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-primary-600">{c.fullName[0]}</span>
-                  </div>
+                <li key={c.id} className="px-4 py-2.5 flex items-center gap-2">
                   <div className="min-w-0 flex-1">
-                    <RecordLink
-                      objectApiName="Contact"
-                      recordId={c.id}
-                      label={c.fullName}
-                      className="text-sm font-medium"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <RecordLink
+                        objectApiName="Contact"
+                        recordId={c.id}
+                        label={c.fullName}
+                        className="text-sm font-medium"
+                      />
+                      {c.isPrimary && <Badge variant="brand">主</Badge>}
+                    </div>
                     {c.role && <p className="text-xs text-sf-weak truncate">{c.role}</p>}
                   </div>
-                  {c.isPrimary && <Badge variant="brand">主</Badge>}
                 </li>
               ))}
             </ul>
