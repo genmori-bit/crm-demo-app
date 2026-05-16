@@ -82,7 +82,7 @@ describe("contactSchema", () => {
 // ─── Deal ──────────────────────────────────────────────────────────────────
 
 describe("dealSchema", () => {
-  const base = { companyId: "c1", dealName: "テスト商談", stage: "lead", amount: 0, probability: 0 };
+  const base = { companyId: "c1", dealName: "テスト商談", stage: "prospecting", amount: 0, probability: 0 };
 
   it("passes with required fields", () => {
     const result = dealSchema.safeParse(base);
@@ -134,7 +134,7 @@ describe("dealSchema", () => {
   });
 
   it("passes all valid stages", () => {
-    for (const stage of ["lead", "hearing", "proposal", "negotiation", "won", "lost"]) {
+    for (const stage of ["prospecting", "discovery", "proposal", "negotiation", "closing", "won", "lost"]) {
       const result = dealSchema.safeParse({ ...base, stage });
       expect(result.success, `stage=${stage}`).toBe(true);
     }

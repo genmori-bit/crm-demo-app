@@ -3,22 +3,24 @@
 import { cn } from "@/lib/utils";
 import { DEAL_STAGE_LABELS, type DealStage } from "@/types";
 
-const ACTIVE_STAGES: DealStage[] = ["lead", "hearing", "proposal", "negotiation", "won"];
+const ACTIVE_STAGES: DealStage[] = ["prospecting", "discovery", "proposal", "negotiation", "closing", "won"];
 
 const STAGE_GUIDANCE: Record<DealStage, string> = {
-  lead: "見込み顧客を特定し、初回コンタクトを行いましょう",
-  hearing: "ニーズヒアリングと課題整理を進めましょう",
+  prospecting: "見込み顧客を特定し、初回コンタクトで案件化しましょう",
+  discovery: "ニーズヒアリングと課題整理を進めましょう",
   proposal: "提案資料を作成し、担当者にプレゼンしましょう",
   negotiation: "契約条件の交渉と承認プロセスを進めましょう",
+  closing: "最終条件の調整と契約締結に向けて進めましょう",
   won: "受注を確定し、オンボーディングを開始しましょう",
   lost: "失注の原因を分析し、次回案件に活かしましょう",
 };
 
 const STAGE_COLORS: Record<DealStage, { bg: string; text: string; ring: string }> = {
-  lead: { bg: "bg-[#706e6b]", text: "text-white", ring: "ring-[#706e6b]" },
-  hearing: { bg: "bg-[#0176d3]", text: "text-white", ring: "ring-[#0176d3]" },
-  proposal: { bg: "bg-[#dd7a01]", text: "text-white", ring: "ring-[#dd7a01]" },
-  negotiation: { bg: "bg-[#9050e9]", text: "text-white", ring: "ring-[#9050e9]" },
+  prospecting: { bg: "bg-[#706e6b]", text: "text-white", ring: "ring-[#706e6b]" },
+  discovery: { bg: "bg-[#dd7a01]", text: "text-white", ring: "ring-[#dd7a01]" },
+  proposal: { bg: "bg-[#0176d3]", text: "text-white", ring: "ring-[#0176d3]" },
+  negotiation: { bg: "bg-[#6b34b0]", text: "text-white", ring: "ring-[#6b34b0]" },
+  closing: { bg: "bg-[#0e7490]", text: "text-white", ring: "ring-[#0e7490]" },
   won: { bg: "bg-success", text: "text-white", ring: "ring-success" },
   lost: { bg: "bg-danger", text: "text-white", ring: "ring-danger" },
 };
@@ -47,7 +49,7 @@ export function StagePath({ currentStage, onStageChange }: StagePathProps) {
         </div>
         {onStageChange && (
           <button
-            onClick={() => onStageChange("lead")}
+            onClick={() => onStageChange("prospecting")}
             className="ml-auto text-xs text-danger font-medium underline hover:no-underline focus:outline-none"
           >
             ステージをリセット

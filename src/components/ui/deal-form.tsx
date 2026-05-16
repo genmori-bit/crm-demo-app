@@ -33,7 +33,7 @@ export function DealForm({ defaultValues, onSubmit, submitLabel, preselectedComp
   } = useForm<DealFormData>({
     resolver: zodResolver(dealSchema),
     defaultValues: {
-      stage: "lead",
+      stage: "prospecting",
       amount: 0,
       probability: 0,
       companyId: preselectedCompanyId ?? "",

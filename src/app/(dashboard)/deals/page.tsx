@@ -36,12 +36,12 @@ const LIST_VIEWS: { id: ViewId; label: string; stageFilter: string }[] = [
   { id: "lost", label: "失注", stageFilter: "lost" },
 ];
 
-const ACTIVE_STAGES: DealStage[] = ["lead", "hearing", "proposal", "negotiation"];
+const ACTIVE_STAGES: DealStage[] = ["prospecting", "discovery", "proposal", "negotiation", "closing"];
 
 type SortField = "dealName" | "amount" | "probability" | "expectedCloseDate" | "stage";
 
 const STAGE_ORDER: Record<string, number> = {
-  lead: 0, hearing: 1, proposal: 2, negotiation: 3, won: 4, lost: 5,
+  prospecting: 0, discovery: 1, proposal: 2, negotiation: 3, closing: 4, won: 5, lost: 6,
 };
 
 function ProbabilityBar({ value }: { value: number }) {

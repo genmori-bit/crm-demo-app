@@ -1,5 +1,5 @@
 export type CompanyStatus = "prospect" | "negotiating" | "active" | "lost" | "dormant";
-export type DealStage = "lead" | "hearing" | "proposal" | "negotiation" | "won" | "lost";
+export type DealStage = "prospecting" | "discovery" | "proposal" | "negotiation" | "closing" | "won" | "lost";
 export type ActivityType = "phone" | "email" | "meeting" | "note" | "other";
 export type TaskPriority = "low" | "medium" | "high";
 export type TaskStatus = "todo" | "in_progress" | "done";
@@ -13,10 +13,11 @@ export const COMPANY_STATUS_LABELS: Record<CompanyStatus, string> = {
 };
 
 export const DEAL_STAGE_LABELS: Record<DealStage, string> = {
-  lead: "リード",
-  hearing: "ヒアリング",
+  prospecting: "案件化",
+  discovery: "ヒアリング",
   proposal: "提案",
   negotiation: "交渉",
+  closing: "最終調整",
   won: "受注",
   lost: "失注",
 };

@@ -21,10 +21,11 @@ const companyStatusVariants: Record<CompanyStatus, BadgeVariant> = {
 };
 
 const dealStageVariants: Record<DealStage, BadgeVariant> = {
-  lead: "muted",
-  hearing: "brand",
+  prospecting: "muted",
+  discovery: "brand",
   proposal: "info",
   negotiation: "warning",
+  closing: "info",
   won: "success",
   lost: "danger",
 };

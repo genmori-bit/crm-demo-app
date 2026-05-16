@@ -138,13 +138,13 @@ const STATUS_MAP: Record<string, { label: string; variant: "muted" | "info" | "w
 };
 
 const DEAL_STAGE_MAP: Record<string, { label: string; variant: "muted" | "info" | "warning" | "success" | "danger" }> = {
-  "Prospecting": { label: "見込み", variant: "muted" },
-  "Qualification": { label: "検討中", variant: "info" },
-  "Needs Analysis": { label: "ニーズ確認", variant: "info" },
-  "Proposal": { label: "提案", variant: "warning" },
-  "Negotiation": { label: "交渉", variant: "warning" },
-  "Closed Won": { label: "受注", variant: "success" },
-  "Closed Lost": { label: "失注", variant: "danger" },
+  prospecting: { label: "案件化", variant: "muted" },
+  discovery: { label: "ヒアリング", variant: "info" },
+  proposal: { label: "提案", variant: "info" },
+  negotiation: { label: "交渉", variant: "warning" },
+  closing: { label: "最終調整", variant: "warning" },
+  won: { label: "受注", variant: "success" },
+  lost: { label: "失注", variant: "danger" },
 };
 
 const TIER_AVATAR_COLOR: Record<string, string> = {
@@ -215,7 +215,7 @@ function OverviewTab({
 }) {
   const activeInsights = (company.accountInsights ?? []).filter((i) => !i.isDismissed).slice(0, 3);
   const openDeals = (company.deals ?? []).filter(
-    (d) => !["Closed Won", "Closed Lost"].includes(d.stage)
+    (d) => !["won", "lost"].includes(d.stage)
   ).slice(0, 5);
   const topContacts = (company.contacts ?? []).slice(0, 5);
   const topTasks = (company.tasks ?? []).filter((t) => t.status !== "COMPLETED").slice(0, 3);
@@ -939,9 +939,9 @@ function ActivityTab({ company }: { company: Company }) {
 
 function DealsTab({ company }: { company: Company }) {
   const deals = company.deals ?? [];
-  const openDeals = deals.filter((d) => !["won", "lost", "Closed Won", "Closed Lost"].includes(d.stage));
+  const openDeals = deals.filter((d) => !["won", "lost"].includes(d.stage));
   const totalPipeline = openDeals.reduce((s, d) => s + (d.amount ?? 0), 0);
-  const wonDeals = deals.filter((d) => ["won", "Closed Won"].includes(d.stage));
+  const wonDeals = deals.filter((d) => d.stage === "won");
   const totalWon = wonDeals.reduce((s, d) => s + (d.amount ?? 0), 0);
   const now = new Date();
 

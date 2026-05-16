@@ -85,9 +85,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     }),
     Promise.all([
       prisma.contact.count({ where: { companyId: id } }),
-      prisma.deal.count({ where: { companyId: id, stage: { notIn: ["Closed Won", "Closed Lost"] } } }),
-      prisma.deal.aggregate({ where: { companyId: id, stage: { notIn: ["Closed Won", "Closed Lost"] } }, _sum: { amount: true } }),
-      prisma.deal.aggregate({ where: { companyId: id, stage: "Closed Won" }, _sum: { amount: true } }),
+      prisma.deal.count({ where: { companyId: id, stage: { notIn: ["won", "lost"] } } }),
+      prisma.deal.aggregate({ where: { companyId: id, stage: { notIn: ["won", "lost"] } }, _sum: { amount: true } }),
+      prisma.deal.aggregate({ where: { companyId: id, stage: "won" }, _sum: { amount: true } }),
       prisma.case.count({ where: { companyId: id, status: { notIn: ["Closed"] } } }),
       prisma.contract.count({ where: { companyId: id, status: "Active" } }),
       prisma.lead.count({ where: { companyId: id, score: { gte: 70 }, convertedAt: null } }),

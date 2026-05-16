@@ -572,7 +572,7 @@ async function main() {
     { stage: "negotiation", count: 20, probMin: 65, probMax: 80, amountMin: 5_000_000, amountMax: 150_000_000, forecastCategory: "BEST_CASE", closeDateOffsetMin: 15, closeDateOffsetMax: 60 },
     { stage: "won", count: 30, probMin: 100, probMax: 100, amountMin: 3_000_000, amountMax: 100_000_000, forecastCategory: "CLOSED", closeDateOffsetMin: -90, closeDateOffsetMax: -1, isWon: true },
     { stage: "lost", count: 20, probMin: 0, probMax: 0, amountMin: 1_000_000, amountMax: 50_000_000, forecastCategory: "CLOSED", closeDateOffsetMin: -60, closeDateOffsetMax: -1, isLost: true },
-    { stage: "commit", count: 15, probMin: 85, probMax: 95, amountMin: 10_000_000, amountMax: 200_000_000, forecastCategory: "COMMIT", closeDateOffsetMin: 7, closeDateOffsetMax: 45 },
+    { stage: "closing", count: 15, probMin: 85, probMax: 95, amountMin: 10_000_000, amountMax: 200_000_000, forecastCategory: "COMMIT", closeDateOffsetMin: 7, closeDateOffsetMax: 45 },
   ];
 
   const lostReasons = ["価格が合わなかった", "競合他社に負けた", "予算凍結", "担当者変更", "導入延期", "要件不一致"];

@@ -567,7 +567,7 @@ model Deal {
   companyId         String
   contactId         String?
   dealName          String
-  stage             String    @default("lead")
+  stage             String    @default("prospecting")
   forecastCategory  String    @default("PIPELINE")
   type              String    @default("NEW_BUSINESS")
   leadSource        String?
