@@ -13,13 +13,33 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const deal = await prisma.deal.findUnique({
     where: { id },
     include: {
-      company: true,
-      contact: true,
+      company: { select: { id: true, companyName: true } },
+      contact: { select: { id: true, fullName: true } },
+      owner: { select: { id: true, name: true, department: true } },
+      salesRep: { select: { id: true, name: true } },
+      salesEngineer: { select: { id: true, name: true } },
+      teamMembers: {
+        include: {
+          user: { select: { id: true, name: true, title: true } },
+        },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+      },
       activities: {
         orderBy: { activityDate: "desc" },
-        include: { contact: { select: { fullName: true } } },
+        include: {
+          contact: { select: { id: true, fullName: true } },
+          owner: { select: { id: true, name: true } },
+          company: { select: { id: true, companyName: true } },
+          deal: { select: { id: true, dealName: true } },
+        },
+        take: 50,
       },
-      tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
+      tasks: {
+        orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+        include: {
+          assignee: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 

@@ -10,7 +10,10 @@ interface ActivityItem {
   type: string;
   subject: string;
   body?: string | null;
+  outcome?: string | null;
+  durationMinutes?: number | null;
   activityDate: string;
+  owner?: { id: string; name: string | null } | null;
   company?: { id: string; companyName: string } | null;
   contact?: { id: string; fullName: string } | null;
   deal?: { id: string; dealName: string } | null;
@@ -92,6 +95,33 @@ function ActivityEntry({ item }: { item: ActivityItem }) {
             </button>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
               <span className="text-xs text-sf-weak">{ACTIVITY_TYPE_LABELS[t]}</span>
+              {item.durationMinutes != null && (
+                <>
+                  <span className="text-sf-border text-xs">·</span>
+                  <span className="text-xs text-sf-weak">{item.durationMinutes}分</span>
+                </>
+              )}
+              {item.outcome && (
+                <>
+                  <span className="text-sf-border text-xs">·</span>
+                  <span className={`text-xs font-medium ${
+                    item.outcome === "POSITIVE" ? "text-success" :
+                    item.outcome === "NEGATIVE" ? "text-danger" :
+                    "text-sf-weak"
+                  }`}>
+                    {item.outcome === "POSITIVE" ? "良好" : item.outcome === "NEGATIVE" ? "懸念" : item.outcome === "NEUTRAL" ? "中立" : item.outcome}
+                  </span>
+                </>
+              )}
+              {item.owner && (
+                <>
+                  <span className="text-sf-border text-xs">·</span>
+                  <span className="text-xs text-sf-weak">実施: </span>
+                  <Link href={`/users/${item.owner.id}`} className="text-xs text-primary-600 hover:underline">
+                    {item.owner.name}
+                  </Link>
+                </>
+              )}
               {item.company && (
                 <>
                   <span className="text-sf-border text-xs">·</span>

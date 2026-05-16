@@ -70,7 +70,11 @@ async function fetchDeals(dashFilters: DashboardFilters, limit = 1000) {
   }
   return prisma.deal.findMany({
     where,
-    include: { company: { select: { companyName: true, status: true } }, contact: { select: { fullName: true } } },
+    include: {
+      company: { select: { companyName: true, status: true } },
+      contact: { select: { fullName: true } },
+      owner: { select: { name: true } },
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
   });
@@ -84,7 +88,11 @@ async function fetchActivities(dashFilters: DashboardFilters, limit = 1000) {
   }
   return prisma.activity.findMany({
     where,
-    include: { company: { select: { companyName: true } }, deal: { select: { dealName: true } } },
+    include: {
+      company: { select: { companyName: true } },
+      deal: { select: { dealName: true } },
+      owner: { select: { name: true } },
+    },
     orderBy: { activityDate: "desc" },
     take: limit,
   });
@@ -208,6 +216,7 @@ async function executeDealReport(
     const metric = String(config.metric ?? "amount");
     const lim = Number(config.limit ?? 10);
     const grouped = groupBy(deals, (d) => {
+      if (xAxis === "owner") return d.owner?.name ?? "未割当";
       const v = (d as Record<string, unknown>)[xAxis];
       return v != null ? String(v) : "不明";
     });
@@ -262,23 +271,49 @@ async function executeActivityReport(
       activityDate: a.activityDate,
       "company.companyName": a.company?.companyName,
       "deal.dealName": a.deal?.dealName,
+      "owner.name": a.owner?.name,
       href: `/activities`,
     }));
     return { columns: ["type", "subject", "activityDate"], rows, summary, chartData: [], totalCount: activities.length, executedAt };
   }
 
   const xAxis = String(config.xAxis ?? "type");
-  const typeLabels: Record<string, string> = { note: "メモ", call: "電話", email: "メール", meeting: "商談", visit: "訪問" };
+  const typeLabels: Record<string, string> = { note: "メモ", phone: "電話", email: "メール", meeting: "商談", visit: "訪問", other: "その他" };
+  const outcomeLabels: Record<string, string> = { POSITIVE: "良好", NEUTRAL: "中立", NEGATIVE: "懸念" };
+
   const grouped = groupBy(activities, (a) => {
+    if (xAxis === "owner") return a.owner?.name ?? "未割当";
+    if (xAxis === "outcome") return a.outcome ?? "未記録";
     const v = (a as Record<string, unknown>)[xAxis];
     return v != null ? String(v) : "不明";
   });
   const chartData = [...grouped.entries()].map(([label, items], i) => ({
-    label: xAxis === "type" ? (typeLabels[label] ?? label) : label,
+    label: xAxis === "type" ? (typeLabels[label] ?? label)
+         : xAxis === "outcome" ? (outcomeLabels[label] ?? label)
+         : label,
     value: items.length,
     count: items.length,
     color: CHART_COLORS[i % CHART_COLORS.length],
-  })).sort((a, b) => b.value - a.value).slice(0, 10);
+  })).sort((a, b) => b.value - a.value).slice(0, 12);
+
+  if (widgetType === "LINE") {
+    const dateGroup = String(config.dateGroup ?? "month");
+    const dateGrouped = groupBy(activities, (a) => {
+      const date = new Date(a.activityDate);
+      if (dateGroup === "month") return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}`;
+      if (dateGroup === "week") {
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        return weekStart.toISOString().slice(0, 10);
+      }
+      return `${date.getFullYear()}`;
+    });
+    const timeData = [...dateGrouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([d, items]) => ({
+      date: d, value: items.length, count: items.length,
+    }));
+    const lineChartData = timeData.map((t, i) => ({ label: t.date, value: t.value, color: CHART_COLORS[i % CHART_COLORS.length] }));
+    return { columns: ["date", "count"], rows: [], summary, chartData: lineChartData, timeData, totalCount: activities.length, executedAt };
+  }
 
   return { columns: [xAxis, "count"], rows: [], summary, chartData, totalCount: activities.length, executedAt };
 }

@@ -3,8 +3,32 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// ===================== Helpers =====================
+function daysAgo(n: number): Date {
+  const d = new Date("2026-05-16");
+  d.setDate(d.getDate() - n);
+  return d;
+}
+function daysFromNow(n: number): Date {
+  const d = new Date("2026-05-16");
+  d.setDate(d.getDate() + n);
+  return d;
+}
+function randomBetween(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function pickN<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
+}
+
 async function main() {
-  // Clear existing data
+  console.log("🌱 シードデータの投入を開始...");
+
+  // ===================== Cleanup =====================
   await prisma.auditLog.deleteMany();
   await prisma.importJob.deleteMany();
   await prisma.exportJob.deleteMany();
@@ -17,6 +41,7 @@ async function main() {
   await prisma.dataTag.deleteMany();
   await prisma.task.deleteMany();
   await prisma.activity.deleteMany();
+  await prisma.opportunityTeamMember.deleteMany();
   await prisma.deal.deleteMany();
   await prisma.contact.deleteMany();
   await prisma.company.deleteMany();
@@ -43,7 +68,7 @@ async function main() {
   await prisma.prospect.deleteMany();
   await prisma.landingPage.deleteMany();
 
-  // Settings seed
+  // Settings cleanup
   await prisma.permissionSetAssignment.deleteMany();
   await prisma.teamMember.deleteMany();
   await prisma.userAppAccess.deleteMany();
@@ -57,7 +82,7 @@ async function main() {
   await prisma.securitySettings.deleteMany();
   await prisma.orgSettings.deleteMany();
 
-  // New standard objects cleanup
+  // Standard objects cleanup
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.quoteLineItem.deleteMany();
@@ -74,14 +99,14 @@ async function main() {
   await prisma.activityRelation.deleteMany();
   await prisma.opportunityContactRole.deleteMany();
   await prisma.case.deleteMany();
-  // New Lead MA models cleanup
+  // Lead MA cleanup
   await prisma.leadProgramEnrollment.deleteMany();
   await prisma.leadFormSubmission.deleteMany();
   await prisma.leadEmailRecipient.deleteMany();
   await prisma.leadListMembership.deleteMany();
   await prisma.leadEngagementActivity.deleteMany();
   await prisma.lead.deleteMany();
-  // ObjectDefinition cleanup (keep for upsert)
+  // ObjectDefinition cleanup
   await prisma.fieldDefinition.deleteMany();
   await prisma.customObjectRecord.deleteMany();
   await prisma.objectDefinition.deleteMany();
@@ -98,8 +123,10 @@ async function main() {
   await prisma.accountStakeholder.deleteMany();
   await prisma.accountTeamMember.deleteMany();
 
-  // Profiles
-  const [adminProfile, managerProfile, salesProfile] = await Promise.all([
+  console.log("✅ 既存データを削除完了");
+
+  // ===================== Profiles =====================
+  const [adminProfile, managerProfile, salesProfile, csmProfile, marketingProfile] = await Promise.all([
     prisma.profile.create({
       data: {
         name: "システム管理者",
@@ -156,9 +183,38 @@ async function main() {
         ].map((k) => [k, true])),
       },
     }),
+    prisma.profile.create({
+      data: {
+        name: "CSM担当",
+        description: "カスタマーサクセス担当者プロファイル",
+        permissions: Object.fromEntries([
+          "company.view","company.edit",
+          "contact.view","contact.create","contact.edit",
+          "deal.view",
+          "activity.view","activity.create","activity.edit",
+          "task.view","task.create","task.edit",
+          "report.view","dashboard.view",
+        ].map((k) => [k, true])),
+      },
+    }),
+    prisma.profile.create({
+      data: {
+        name: "マーケティング担当",
+        description: "マーケティング担当者プロファイル",
+        permissions: Object.fromEntries([
+          "company.view","contact.view",
+          "deal.view",
+          "activity.view","activity.create",
+          "task.view","task.create",
+          "report.view","dashboard.view",
+          "ma.view","ma.prospect.view","ma.prospect.edit","ma.email.view","ma.email.send",
+          "ma.form.view","ma.form.edit","ma.program.view","ma.program.edit",
+        ].map((k) => [k, true])),
+      },
+    }),
   ]);
 
-  // Roles
+  // ===================== Roles =====================
   const [ceoRole, salesDirRole, salesMgrRole] = await Promise.all([
     prisma.role.create({ data: { name: "CEO", description: "最高経営責任者", sortOrder: 1 } }),
     prisma.role.create({ data: { name: "営業本部長", description: "営業部門トップ", sortOrder: 2 } }),
@@ -166,8 +222,9 @@ async function main() {
   ]);
   await prisma.role.update({ where: { id: salesDirRole.id }, data: { parentId: ceoRole.id } });
   await prisma.role.update({ where: { id: salesMgrRole.id }, data: { parentId: salesDirRole.id } });
+  void ceoRole; void salesDirRole; void salesMgrRole;
 
-  // Permission sets
+  // ===================== Permission Sets =====================
   const [maWritePS] = await Promise.all([
     prisma.permissionSet.create({
       data: {
@@ -189,34 +246,73 @@ async function main() {
       },
     }),
   ]);
+  void maWritePS;
 
-  // Org & security defaults
-  await prisma.orgSettings.create({ data: { id: "singleton", orgName: "デモ株式会社" } });
+  // ===================== Org & Security =====================
+  await prisma.orgSettings.create({ data: { id: "singleton", orgName: "株式会社デモジャパン" } });
   await prisma.securitySettings.create({ data: { id: "singleton" } });
 
-  // Users
+  // ===================== Users (17) =====================
+  console.log("👤 ユーザーを作成中...");
   const hashedPassword = await bcrypt.hash("password123", 12);
-  const users = await Promise.all([
+
+  const adminUser = await prisma.user.create({
+    data: { email: "admin@example.com", name: "管理者", passwordHash: hashedPassword, role: "ADMIN", profileId: adminProfile.id, department: "システム管理", title: "システム管理者", phone: "03-0000-0001" },
+  });
+
+  const director = await prisma.user.create({
+    data: { email: "director@example.com", name: "橋本 大輔", passwordHash: hashedPassword, role: "MANAGER", profileId: managerProfile.id, department: "営業部", title: "営業部長", phone: "03-0000-0002" },
+  });
+
+  const [manager1, manager2] = await Promise.all([
     prisma.user.create({
-      data: { email: "admin@example.com", name: "管理者", passwordHash: hashedPassword, role: "ADMIN", profileId: adminProfile.id, department: "システム管理", title: "システム管理者" },
+      data: { email: "manager1@example.com", name: "田中 健一", passwordHash: hashedPassword, role: "MANAGER", profileId: managerProfile.id, department: "営業1課", title: "営業マネージャー", phone: "03-0000-0003", managerId: director.id },
     }),
     prisma.user.create({
-      data: { email: "manager@example.com", name: "田中マネージャー", passwordHash: hashedPassword, role: "MANAGER", profileId: managerProfile.id, department: "営業部", title: "営業マネージャー" },
-    }),
-    prisma.user.create({
-      data: { email: "sales1@example.com", name: "山田 営業一郎", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業1課", title: "営業担当" },
-    }),
-    prisma.user.create({
-      data: { email: "sales2@example.com", name: "佐藤 営業花子", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業2課", title: "シニア営業担当" },
-    }),
-    prisma.user.create({
-      data: { email: "sales3@example.com", name: "鈴木 営業次郎", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業1課", title: "営業担当" },
+      data: { email: "manager2@example.com", name: "鈴木 裕子", passwordHash: hashedPassword, role: "MANAGER", profileId: managerProfile.id, department: "営業2課", title: "営業マネージャー", phone: "03-0000-0004", managerId: director.id },
     }),
   ]);
-  const [adminUser] = users;
 
-  // Tags
-  const tags = await Promise.all([
+  const [sales1, sales2, sales3, sales4, sales5, sales6] = await Promise.all([
+    prisma.user.create({ data: { email: "sales1@example.com", name: "山田 一郎", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業1課", title: "上級営業担当", phone: "03-0000-0011", managerId: manager1.id } }),
+    prisma.user.create({ data: { email: "sales2@example.com", name: "佐藤 花子", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業1課", title: "営業担当", phone: "03-0000-0012", managerId: manager1.id } }),
+    prisma.user.create({ data: { email: "sales3@example.com", name: "鈴木 次郎", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業1課", title: "営業担当", phone: "03-0000-0013", managerId: manager1.id } }),
+    prisma.user.create({ data: { email: "sales4@example.com", name: "高橋 美咲", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業2課", title: "上級営業担当", phone: "03-0000-0014", managerId: manager2.id } }),
+    prisma.user.create({ data: { email: "sales5@example.com", name: "伊藤 健太", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業2課", title: "営業担当", phone: "03-0000-0015", managerId: manager2.id } }),
+    prisma.user.create({ data: { email: "sales6@example.com", name: "渡辺 さくら", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "営業2課", title: "営業担当", phone: "03-0000-0016", managerId: manager2.id } }),
+  ]);
+
+  const [se1, se2] = await Promise.all([
+    prisma.user.create({ data: { email: "se1@example.com", name: "中村 拓也", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "SEチーム", title: "シニアSE", phone: "03-0000-0021" } }),
+    prisma.user.create({ data: { email: "se2@example.com", name: "小林 恵子", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "SEチーム", title: "SE", phone: "03-0000-0022" } }),
+  ]);
+
+  const [csm1, csm2] = await Promise.all([
+    prisma.user.create({ data: { email: "csm1@example.com", name: "加藤 誠一", passwordHash: hashedPassword, role: "SALES", profileId: csmProfile.id, department: "CSMチーム", title: "シニアCSM", phone: "03-0000-0031" } }),
+    prisma.user.create({ data: { email: "csm2@example.com", name: "吉田 理恵", passwordHash: hashedPassword, role: "SALES", profileId: csmProfile.id, department: "CSMチーム", title: "CSM", phone: "03-0000-0032" } }),
+  ]);
+
+  const [marketing1, marketing2] = await Promise.all([
+    prisma.user.create({ data: { email: "marketing1@example.com", name: "松本 剛", passwordHash: hashedPassword, role: "SALES", profileId: marketingProfile.id, department: "マーケティング", title: "マーケティングマネージャー", phone: "03-0000-0041" } }),
+    prisma.user.create({ data: { email: "marketing2@example.com", name: "井上 奈緒", passwordHash: hashedPassword, role: "SALES", profileId: marketingProfile.id, department: "マーケティング", title: "マーケター", phone: "03-0000-0042" } }),
+  ]);
+
+  const support1 = await prisma.user.create({
+    data: { email: "support1@example.com", name: "木村 隆", passwordHash: hashedPassword, role: "SALES", profileId: salesProfile.id, department: "サポート", title: "サポートスペシャリスト", phone: "03-0000-0051" },
+  });
+
+  void marketing1; void marketing2; void support1; void csmProfile; void marketingProfile;
+
+  const salesUsers = [sales1, sales2, sales3, sales4, sales5, sales6];
+  const csmUsers = [csm1, csm2];
+  const seUsers = [se1, se2];
+  const allUsers = [adminUser, director, manager1, manager2, sales1, sales2, sales3, sales4, sales5, sales6, se1, se2, csm1, csm2, marketing1, marketing2, support1];
+  void allUsers;
+
+  console.log(`✅ ${17}人のユーザーを作成`);
+
+  // ===================== Tags =====================
+  await Promise.all([
     prisma.dataTag.create({ data: { name: "重点顧客", color: "#0176d3" } }),
     prisma.dataTag.create({ data: { name: "要フォロー", color: "#dd7a01" } }),
     prisma.dataTag.create({ data: { name: "競合あり", color: "#ea001e" } }),
@@ -228,662 +324,749 @@ async function main() {
     prisma.dataTag.create({ data: { name: "上場企業", color: "#7c3aed" } }),
     prisma.dataTag.create({ data: { name: "成長企業", color: "#15803d" } }),
   ]);
-  void adminUser; void tags;
 
-  // Companies
-  const companies = await Promise.all([
-    prisma.company.create({
-      data: {
-        companyName: "株式会社テクノソリューション",
-        website: "https://technosolution.example.com",
-        industry: "IT・ソフトウェア",
-        employeeSize: "100-500名",
-        status: "active",
-        ownerName: "田中 太郎",
-        memo: "DX推進に積極的。予算は潤沢。意思決定が速い。",
-      },
-    }),
-    prisma.company.create({
-      data: {
-        companyName: "グローバル商事株式会社",
-        website: "https://globalshoji.example.com",
-        industry: "商社・卸売",
-        employeeSize: "1000名以上",
-        status: "prospect",
-        ownerName: "鈴木 花子",
-        memo: "大手商社。意思決定に時間がかかる傾向あり。",
-      },
-    }),
-    prisma.company.create({
-      data: {
-        companyName: "医療法人さくら会",
-        website: "https://sakurakai.example.com",
-        industry: "医療・ヘルスケア",
-        employeeSize: "50-100名",
-        status: "negotiating",
-        ownerName: "山田 健二",
-        memo: "セキュリティ要件が厳しい。導入実績を重視する。",
-      },
-    }),
-    prisma.company.create({
-      data: {
-        companyName: "有限会社フードサービス",
-        website: "https://foodservice.example.com",
-        industry: "飲食・食品",
-        employeeSize: "10-50名",
-        status: "lost",
-        ownerName: "佐藤 美咲",
-        memo: "予算オーバーで今回は見送り。来期再挑戦予定。",
-      },
-    }),
-    prisma.company.create({
-      data: {
-        companyName: "製造業株式会社みらい工業",
-        website: "https://mirai-industry.example.com",
-        industry: "製造・メーカー",
-        employeeSize: "500-1000名",
-        status: "prospect",
-        ownerName: "高橋 誠",
-        memo: "工場のデジタル化を検討中。IT担当者と良好な関係。",
-      },
-    }),
-  ]);
+  // ===================== Companies (80) =====================
+  console.log("🏢 企業を作成中...");
 
-  // Contacts
-  const contacts = await Promise.all([
-    prisma.contact.create({
-      data: {
-        companyId: companies[0].id,
-        fullName: "中村 拓也",
-        email: "nakamura@technosolution.example.com",
-        phone: "03-1234-5678",
-        department: "IT推進部",
-        title: "部長",
-        isPrimary: true,
-        memo: "技術的な理解が深い。最終意思決定者。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[0].id,
-        fullName: "伊藤 裕子",
-        email: "ito@technosolution.example.com",
-        phone: "03-1234-5679",
-        department: "IT推進部",
-        title: "担当者",
-        isPrimary: false,
-        memo: "実務担当者。日々の窓口はこちら。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[1].id,
-        fullName: "渡辺 隆",
-        email: "watanabe@globalshoji.example.com",
-        phone: "03-9876-5432",
-        department: "経営企画部",
-        title: "課長",
-        isPrimary: true,
-        memo: "稟議書を作成する実務担当者。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[1].id,
-        fullName: "松本 由美",
-        email: "matsumoto@globalshoji.example.com",
-        phone: "03-9876-5433",
-        department: "情報システム部",
-        title: "部長",
-        isPrimary: false,
-        memo: "技術評価の最終決定者。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[2].id,
-        fullName: "小林 和夫",
-        email: "kobayashi@sakurakai.example.com",
-        phone: "06-1111-2222",
-        department: "管理部",
-        title: "事務長",
-        isPrimary: true,
-        memo: "院長への橋渡し役。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[2].id,
-        fullName: "加藤 麻衣",
-        email: "kato@sakurakai.example.com",
-        phone: "06-1111-2223",
-        department: "医療情報部",
-        title: "システム管理者",
-        isPrimary: false,
-        memo: "技術的な要件定義を担当。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[3].id,
-        fullName: "木村 大輔",
-        email: "kimura@foodservice.example.com",
-        phone: "06-3333-4444",
-        department: "経営",
-        title: "代表取締役",
-        isPrimary: true,
-        memo: "オーナー社長。コスト意識が高い。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[4].id,
-        fullName: "橋本 浩二",
-        email: "hashimoto@mirai-industry.example.com",
-        phone: "052-555-6666",
-        department: "生産管理部",
-        title: "部長",
-        isPrimary: true,
-        memo: "現場のDX推進リーダー。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[4].id,
-        fullName: "石田 奈緒",
-        email: "ishida@mirai-industry.example.com",
-        phone: "052-555-6667",
-        department: "情報システム部",
-        title: "担当者",
-        isPrimary: false,
-        memo: "技術調査を担当。",
-      },
-    }),
-    prisma.contact.create({
-      data: {
-        companyId: companies[0].id,
-        fullName: "福田 正樹",
-        email: "fukuda@technosolution.example.com",
-        phone: "03-1234-5680",
-        department: "購買部",
-        title: "担当者",
-        isPrimary: false,
-        memo: "契約・購買手続きを担当。",
-      },
-    }),
-  ]);
+  interface IndustryConfig {
+    industry: string;
+    subIndustry: string;
+    count: number;
+  }
+  const industryConfigs: IndustryConfig[] = [
+    { industry: "IT・ソフトウェア", subIndustry: "SaaS", count: 12 },
+    { industry: "IT・ソフトウェア", subIndustry: "システムインテグレーション", count: 8 },
+    { industry: "製造", subIndustry: "電機・精密機器", count: 5 },
+    { industry: "製造", subIndustry: "機械・設備", count: 5 },
+    { industry: "金融", subIndustry: "銀行・信用金庫", count: 4 },
+    { industry: "金融", subIndustry: "保険", count: 4 },
+    { industry: "医療・ヘルスケア", subIndustry: "医療機器", count: 4 },
+    { industry: "医療・ヘルスケア", subIndustry: "製薬", count: 4 },
+    { industry: "流通・小売", subIndustry: "Eコマース", count: 4 },
+    { industry: "流通・小売", subIndustry: "小売", count: 4 },
+    { industry: "建設・不動産", subIndustry: "建設", count: 3 },
+    { industry: "建設・不動産", subIndustry: "不動産", count: 3 },
+    { industry: "物流", subIndustry: "物流・配送", count: 6 },
+    { industry: "教育", subIndustry: "EdTech", count: 5 },
+    { industry: "食品・飲食", subIndustry: "食品製造", count: 4 },
+    { industry: "商社", subIndustry: "総合商社", count: 5 },
+  ];
 
-  // Deals
-  const deals = await Promise.all([
-    prisma.deal.create({
-      data: {
-        companyId: companies[0].id,
-        contactId: contacts[0].id,
-        dealName: "クラウドERP導入プロジェクト",
-        stage: "proposal",
-        amount: 5000000,
-        probability: 60,
-        expectedCloseDate: new Date("2026-06-30"),
-        nextAction: "提案書の最終版を6/10までに提出",
-        memo: "3年契約を前提とした提案。保守サポートも含む。",
-      },
-    }),
-    prisma.deal.create({
-      data: {
-        companyId: companies[1].id,
-        contactId: contacts[2].id,
-        dealName: "営業管理システム刷新",
-        stage: "hearing",
-        amount: 8000000,
-        probability: 30,
-        expectedCloseDate: new Date("2026-09-30"),
-        nextAction: "要件定義ヒアリング（6/20予定）",
-        memo: "既存システムからの移行が課題。データ移行費用を別途見積もる。",
-      },
-    }),
-    prisma.deal.create({
-      data: {
-        companyId: companies[2].id,
-        contactId: contacts[4].id,
-        dealName: "電子カルテ連携システム",
-        stage: "negotiation",
-        amount: 3200000,
-        probability: 75,
-        expectedCloseDate: new Date("2026-05-31"),
-        nextAction: "セキュリティ要件の最終確認",
-        memo: "ISMS認証対応が必須。セキュリティ監査対応が鍵。",
-      },
-    }),
-    prisma.deal.create({
-      data: {
-        companyId: companies[4].id,
-        contactId: contacts[7].id,
-        dealName: "工場IoTダッシュボード構築",
-        stage: "lead",
-        amount: 1500000,
-        probability: 20,
-        expectedCloseDate: new Date("2026-12-31"),
-        nextAction: "初回デモを7月に設定予定",
-        memo: "PoC段階。予算はまだ未確定。",
-      },
-    }),
-    prisma.deal.create({
-      data: {
-        companyId: companies[0].id,
-        contactId: contacts[0].id,
-        dealName: "セキュリティ診断サービス",
-        stage: "won",
-        amount: 800000,
-        probability: 100,
-        expectedCloseDate: new Date("2026-04-30"),
-        nextAction: "契約締結済み。サービス開始準備中。",
-        memo: "年間契約。来期も継続見込み。",
-      },
-    }),
-    prisma.deal.create({
-      data: {
-        companyId: companies[3].id,
-        contactId: contacts[6].id,
-        dealName: "POSシステム導入",
-        stage: "lost",
-        amount: 600000,
-        probability: 0,
-        expectedCloseDate: new Date("2026-03-31"),
-        nextAction: "来期の予算確保を確認する",
-        memo: "今期は予算不足で見送り。オーナーとの関係は良好。",
-      },
-    }),
-    prisma.deal.create({
-      data: {
-        companyId: companies[1].id,
-        contactId: contacts[3].id,
-        dealName: "データ分析基盤整備",
-        stage: "proposal",
-        amount: 12000000,
-        probability: 45,
-        expectedCloseDate: new Date("2026-08-31"),
-        nextAction: "役員プレゼンテーション（7/15予定）",
-        memo: "大型案件。競合他社も提案中。価格競争力が課題。",
-      },
-    }),
-    prisma.deal.create({
-      data: {
-        companyId: companies[4].id,
-        contactId: contacts[8].id,
-        dealName: "在庫管理システム更新",
-        stage: "hearing",
-        amount: 2800000,
-        probability: 40,
-        expectedCloseDate: new Date("2026-10-31"),
-        nextAction: "現行システムの調査訪問（7/5予定）",
-        memo: "老朽化したシステムの刷新。クラウド移行も検討中。",
-      },
-    }),
-  ]);
+  const companyNamesByIndustry: Record<string, string[]> = {
+    "IT・ソフトウェア": ["テクノソリューション", "デジタルイノベーション", "クラウドシステムズ", "スマートテック", "データドリブン", "NextGenシステム", "アジャイルソフト", "イノバーク", "DigitalWorks", "テックフォース", "クラウドパートナーズ", "デジタルシフト", "ビジョンテック", "コードラボ", "サイバーリンク", "インフィニティテック", "ソフトウェアファクトリー", "クラウドベース", "ネクストクラウド", "テックビジョン"],
+    "製造": ["精工機械", "電機製作所", "先端機器", "産業システム", "テクノマニファクチャリング", "機械精工", "エレクトロニクス精密", "精密部品工業", "先進製造", "スマートファクトリー"],
+    "金融": ["ファイナンシャルテクノロジー", "フィンテックソリューション", "アセットマネジメント", "デジタルバンク", "クレジットテック", "ファイナンスグループ", "キャピタルマネジメント", "インシュアテック"],
+    "医療・ヘルスケア": ["ヘルスケアイノベーション", "メディカルシステム", "バイオテクノロジー", "ライフサイエンス", "クリニカルテック", "メドテック", "ヘルスデジタル", "バイオファーマ"],
+    "流通・小売": ["コマースプラットフォーム", "リテールテック", "オムニチャネル", "デジタルリテール", "Eコマースソリューション", "ショッピングテック", "リテールDX", "マーケットプレイス"],
+    "建設・不動産": ["建設テクノロジー", "スマートビル", "不動産テック", "プロパティマネジメント", "建設DX", "リアルエステートテック"],
+    "物流": ["ロジスティクスDX", "スマートロジ", "配送テクノロジー", "サプライチェーンシステム", "物流プラットフォーム", "ラストマイルテック", "倉庫管理システム", "配送最適化", "ロジテック", "スマート配送"],
+    "教育": ["エドテクノロジー", "ラーニングプラットフォーム", "デジタル学習", "教育DX", "スマートエデュ", "eラーニングシステム", "学習管理プラットフォーム", "教育イノベーション"],
+    "食品・飲食": ["フードテクノロジー", "食品管理システム", "グルメプラットフォーム", "フードDX", "食品トレーサビリティ", "スマートフード", "食品ロジ", "フードテック"],
+    "商社": ["グローバル商事", "トレーディングDX", "総合商社システム", "貿易プラットフォーム", "デジタル商社", "スマートトレーディング", "グローバルサプライ", "インターナショナルトレード"],
+  };
 
-  // Activities
-  await Promise.all([
-    prisma.activity.create({
-      data: {
-        companyId: companies[0].id,
-        contactId: contacts[0].id,
-        dealId: deals[0].id,
-        type: "meeting",
-        subject: "提案内容のヒアリング",
-        body: "中村部長と1時間のミーティング。現状の課題と要件を詳しく確認。ERPの導入範囲について合意。次回は技術者も交えたデモを実施予定。",
-        activityDate: new Date("2026-05-10"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[0].id,
-        contactId: contacts[1].id,
-        dealId: deals[0].id,
-        type: "email",
-        subject: "提案書ドラフトの送付",
-        body: "伊藤様へ提案書のドラフトをメール送付。費用感の確認を依頼。",
-        activityDate: new Date("2026-05-08"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[1].id,
-        contactId: contacts[2].id,
-        dealId: deals[1].id,
-        type: "phone",
-        subject: "ヒアリング日程調整",
-        body: "渡辺課長へ電話。6月20日にヒアリングMTG設定。情報システム部も参加予定とのこと。",
-        activityDate: new Date("2026-05-09"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[2].id,
-        contactId: contacts[4].id,
-        dealId: deals[2].id,
-        type: "meeting",
-        subject: "セキュリティ要件確認MTG",
-        body: "小林事務長・加藤氏と会議。ISMSの要件書を受領。5/25までに対応可否を回答する約束。",
-        activityDate: new Date("2026-05-07"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[2].id,
-        contactId: contacts[5].id,
-        dealId: deals[2].id,
-        type: "email",
-        subject: "セキュリティ要件書受領の確認",
-        body: "加藤様から送付いただいたセキュリティ要件書の内容を確認。技術チームに共有済み。",
-        activityDate: new Date("2026-05-06"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[4].id,
-        contactId: contacts[7].id,
-        dealId: deals[3].id,
-        type: "phone",
-        subject: "初回電話での状況確認",
-        body: "橋本部長と15分の電話。IoTダッシュボードへの関心は高いが、社内稟議に時間がかかる見込み。7月のデモを提案、前向きな返答を得た。",
-        activityDate: new Date("2026-05-11"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[0].id,
-        contactId: contacts[0].id,
-        dealId: deals[4].id,
-        type: "meeting",
-        subject: "セキュリティ診断サービス契約締結",
-        body: "正式契約書に署名。4月からサービス開始。年間8回の診断レポートを提供予定。",
-        activityDate: new Date("2026-04-28"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[3].id,
-        contactId: contacts[6].id,
-        dealId: deals[5].id,
-        type: "phone",
-        subject: "失注のお詫びと来期フォロー",
-        body: "木村社長へ電話。今期は見送りとなったが、来期の予算申請に向けて情報提供を続けることを約束。良好な関係を維持。",
-        activityDate: new Date("2026-04-15"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[1].id,
-        contactId: contacts[3].id,
-        dealId: deals[6].id,
-        type: "meeting",
-        subject: "データ分析基盤の概念提案",
-        body: "松本部長へのプレゼンテーション実施。競合との差別化ポイントを強調。役員プレゼンへのエスカレーションを打診、前向きな反応。",
-        activityDate: new Date("2026-05-05"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[4].id,
-        contactId: contacts[8].id,
-        dealId: deals[7].id,
-        type: "email",
-        subject: "在庫管理システム現状調査のご依頼",
-        body: "石田様へ現行システムの調査に必要な情報を依頼するメールを送付。ヒアリングシートを添付。",
-        activityDate: new Date("2026-05-08"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[0].id,
-        contactId: contacts[0].id,
-        type: "note",
-        subject: "四半期レビューメモ",
-        body: "テクノソリューション社との関係は良好。ERP案件を最優先で進める。セキュリティ診断は継続見込み。",
-        activityDate: new Date("2026-05-01"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[1].id,
-        contactId: contacts[2].id,
-        type: "phone",
-        subject: "展示会後のフォローアップ",
-        body: "先日の展示会でお会いしたことをきっかけに電話。2件の案件に興味を持っていただいている。",
-        activityDate: new Date("2026-04-20"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[2].id,
-        contactId: contacts[4].id,
-        dealId: deals[2].id,
-        type: "meeting",
-        subject: "デモンストレーション実施",
-        body: "院長も参加する形でシステムデモを実施。操作性に高評価。価格面の調整が最後の課題。",
-        activityDate: new Date("2026-04-25"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[4].id,
-        contactId: contacts[7].id,
-        type: "email",
-        subject: "会社紹介資料の送付",
-        body: "橋本部長へ会社概要と導入事例資料を送付。製造業での実績を特に強調。",
-        activityDate: new Date("2026-04-10"),
-      },
-    }),
-    prisma.activity.create({
-      data: {
-        companyId: companies[0].id,
-        contactId: contacts[9].id,
-        dealId: deals[0].id,
-        type: "meeting",
-        subject: "購買部との契約条件確認",
-        body: "福田担当者と契約条件について打合せ。支払い条件は翌月末払いで合意。",
-        activityDate: new Date("2026-05-12"),
-      },
-    }),
-  ]);
+  const prefixes = ["株式会社", "有限会社"];
+  const tiers = ["STRATEGIC", "ENTERPRISE", "MID_MARKET", "SMB"] as const;
+  const lifecycleStages = ["TARGET", "LEAD", "OPPORTUNITY", "CUSTOMER", "EXPANSION"] as const;
 
-  // Tasks
-  await Promise.all([
-    prisma.task.create({
-      data: {
-        companyId: companies[0].id,
-        dealId: deals[0].id,
-        title: "提案書最終版の作成",
-        description: "6/10までに中村部長へ提出。費用明細と実装スケジュールを含めること。",
-        dueDate: new Date("2026-06-10"),
-        priority: "high",
-        status: "in_progress",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[2].id,
-        dealId: deals[2].id,
-        title: "セキュリティ要件への対応可否回答",
-        description: "ISMS要件書を技術チームで確認し、5/25までに回答する。",
-        dueDate: new Date("2026-05-25"),
-        priority: "high",
-        status: "todo",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[1].id,
-        dealId: deals[1].id,
-        title: "ヒアリングMTGの事前準備",
-        description: "6/20のヒアリングに向けて質問事項をまとめる。現行システムの仕様確認も必要。",
-        dueDate: new Date("2026-06-18"),
-        priority: "medium",
-        status: "todo",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[1].id,
-        dealId: deals[6].id,
-        title: "役員プレゼン資料の作成",
-        description: "7/15の役員プレゼン向けに資料を作成。ROI試算を含めること。",
-        dueDate: new Date("2026-07-10"),
-        priority: "high",
-        status: "todo",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[4].id,
-        dealId: deals[3].id,
-        title: "IoTデモ環境の準備",
-        description: "7月のデモに向けてサンプルデータを用意し、デモ環境を構築する。",
-        dueDate: new Date("2026-06-30"),
-        priority: "medium",
-        status: "todo",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[4].id,
-        dealId: deals[7].id,
-        title: "現行システム調査訪問の準備",
-        description: "7/5の訪問に向けてヒアリング項目を整理。現行システムのヒアリングシートを作成。",
-        dueDate: new Date("2026-07-03"),
-        priority: "medium",
-        status: "todo",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[0].id,
-        title: "四半期商談レビュー資料作成",
-        description: "社内の四半期レビューに向けてテクノソリューション社の商談状況をまとめる。",
-        dueDate: new Date("2026-05-20"),
-        priority: "low",
-        status: "in_progress",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[3].id,
-        title: "来期フォロー計画の立案",
-        description: "フードサービス社への来期アプローチ計画を作成。予算申請時期に合わせて接触する。",
-        dueDate: new Date("2026-07-31"),
-        priority: "low",
-        status: "todo",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[2].id,
-        dealId: deals[2].id,
-        title: "契約書ドラフト作成",
-        description: "交渉が進んでいるため、先行して契約書ドラフトを法務部と調整する。",
-        dueDate: new Date("2026-05-30"),
-        priority: "high",
-        status: "todo",
-      },
-    }),
-    prisma.task.create({
-      data: {
-        companyId: companies[0].id,
-        dealId: deals[4].id,
-        title: "セキュリティ診断サービス開始準備",
-        description: "初回診断の日程調整と診断スコープの確認を行う。",
-        dueDate: new Date("2026-05-15"),
-        priority: "medium",
-        status: "in_progress",
-      },
-    }),
-  ]);
+  // tier distribution: 5 STRATEGIC, 15 ENTERPRISE, 30 MID_MARKET, 30 SMB
+  // lifecycleStage distribution: TARGET(10), LEAD(15), OPPORTUNITY(20), CUSTOMER(25), EXPANSION(10)
+  const tierPool: (typeof tiers[number])[] = [
+    ...Array(5).fill("STRATEGIC"),
+    ...Array(15).fill("ENTERPRISE"),
+    ...Array(30).fill("MID_MARKET"),
+    ...Array(30).fill("SMB"),
+  ];
+  const stagePool: (typeof lifecycleStages[number])[] = [
+    ...Array(10).fill("TARGET"),
+    ...Array(15).fill("LEAD"),
+    ...Array(20).fill("OPPORTUNITY"),
+    ...Array(25).fill("CUSTOMER"),
+    ...Array(10).fill("EXPANSION"),
+  ];
 
-  // Reports
-  const [dealReport, stageReport, activityReport, companyReport, taskReport, funnelReport] = await Promise.all([
-    prisma.report.create({
-      data: {
-        name: "商談一覧",
-        description: "全商談の一覧レポート",
-        objectType: "deal",
-        columns: ["dealName", "stage", "amount", "probability", "expectedCloseDate", "company.companyName"],
-        filters: [],
-        sortField: "expectedCloseDate",
-        sortDir: "asc",
-        isPublic: true,
-        createdById: adminUser.id,
-      },
-    }),
-    prisma.report.create({
-      data: {
-        name: "ステージ別商談集計",
-        description: "商談のステージ別集計",
-        objectType: "deal",
-        columns: ["stage", "amount"],
-        filters: [],
-        sortField: "amount",
-        sortDir: "desc",
-        groupBy: "stage",
-        isPublic: true,
-        createdById: adminUser.id,
-      },
-    }),
-    prisma.report.create({
-      data: {
-        name: "活動履歴一覧",
-        description: "直近の活動履歴",
-        objectType: "activity",
-        columns: ["type", "subject", "activityDate", "company.companyName"],
-        filters: [],
-        sortField: "activityDate",
-        sortDir: "desc",
-        isPublic: true,
-        createdById: adminUser.id,
-      },
-    }),
-    prisma.report.create({
-      data: {
-        name: "企業一覧",
-        description: "顧客企業の一覧",
-        objectType: "company",
-        columns: ["companyName", "industry", "status"],
-        filters: [],
-        sortField: "companyName",
-        sortDir: "asc",
-        isPublic: true,
-        createdById: adminUser.id,
-      },
-    }),
-    prisma.report.create({
-      data: {
-        name: "タスク一覧",
-        description: "未完了タスクの一覧",
-        objectType: "activity",
-        columns: ["subject", "type", "activityDate"],
-        filters: [],
-        sortField: "activityDate",
-        sortDir: "asc",
-        isPublic: true,
-        createdById: adminUser.id,
-      },
-    }),
-    prisma.report.create({
-      data: {
-        name: "ファネル分析",
-        description: "商談のステージ別ファネル",
-        objectType: "deal",
-        columns: ["stage", "amount"],
-        filters: [],
-        sortField: null,
-        sortDir: "desc",
-        groupBy: "stage",
-        isPublic: true,
-        createdById: adminUser.id,
-      },
-    }),
-  ]);
+  const annualRevenueByTier: Record<string, [number, number]> = {
+    STRATEGIC: [200_000_000_000, 1_000_000_000_000],
+    ENTERPRISE: [30_000_000_000, 200_000_000_000],
+    MID_MARKET: [5_000_000_000, 30_000_000_000],
+    SMB: [500_000_000, 5_000_000_000],
+  };
 
-  // Dashboards
+  const companies: Array<{ id: string; companyName: string; lifecycleStage: string; ownerId: string }> = [];
+
+  let companyIdx = 0;
+  let nameCounters: Record<string, number> = {};
+  for (const config of industryConfigs) {
+    const industryKey = config.industry.split("・")[0];
+    const nameList = companyNamesByIndustry[industryKey] ?? companyNamesByIndustry["IT・ソフトウェア"];
+
+    for (let i = 0; i < config.count; i++) {
+      const tier = tierPool[companyIdx % tierPool.length];
+      const lifecycleStage = stagePool[companyIdx % stagePool.length];
+      const owner = salesUsers[companyIdx % salesUsers.length];
+      const accountManager = salesUsers[(companyIdx + 1) % salesUsers.length];
+      const isCustomer = lifecycleStage === "CUSTOMER" || lifecycleStage === "EXPANSION";
+      const csmUser = isCustomer ? csmUsers[companyIdx % csmUsers.length] : null;
+
+      const nameBase = nameList[i % nameList.length];
+      nameCounters[nameBase] = (nameCounters[nameBase] ?? 0) + 1;
+      const suffix = nameCounters[nameBase] > 1 ? ` ${nameCounters[nameBase]}` : "";
+      const prefix = prefixes[companyIdx % 2];
+      const companyName = `${prefix}${nameBase}${suffix}`;
+
+      const [minRev, maxRev] = annualRevenueByTier[tier];
+      const annualRevenue = randomBetween(minRev / 1_000_000, maxRev / 1_000_000) * 1_000_000;
+
+      let arr: number | null = null;
+      if (isCustomer) {
+        const arrRanges: Record<string, [number, number]> = {
+          STRATEGIC: [20_000_000, 500_000_000],
+          ENTERPRISE: [5_000_000, 50_000_000],
+          MID_MARKET: [1_000_000, 10_000_000],
+          SMB: [300_000, 3_000_000],
+        };
+        const [minArr, maxArr] = arrRanges[tier];
+        arr = randomBetween(minArr / 10_000, maxArr / 10_000) * 10_000;
+      }
+
+      const employeeSizes: Record<string, string[]> = {
+        STRATEGIC: ["5000名以上", "1000名以上"],
+        ENTERPRISE: ["1000名以上", "500-1000名"],
+        MID_MARKET: ["100-500名", "50-100名"],
+        SMB: ["10-50名", "50-100名"],
+      };
+      const employeeSize = pick(employeeSizes[tier]);
+      const healthScore = randomBetween(45, 95);
+
+      const company = await prisma.company.create({
+        data: {
+          companyName,
+          industry: config.industry,
+          subIndustry: config.subIndustry,
+          website: `https://${nameBase.toLowerCase().replace(/[・\s]/g, "")}.co.jp`,
+          employeeSize,
+          status: isCustomer ? "active" : "prospect",
+          type: isCustomer ? "CUSTOMER" : "PROSPECT",
+          ownerName: owner.name ?? undefined,
+          ownerId: owner.id,
+          accountManagerId: accountManager.id,
+          customerSuccessManagerId: csmUser?.id ?? undefined,
+          tier,
+          lifecycleStage,
+          annualRevenue,
+          arr: arr ?? undefined,
+          mrr: arr ? Math.floor(arr / 12) : undefined,
+          healthScore,
+          domain: `${nameBase.toLowerCase().replace(/[・\s]/g, "")}.co.jp`,
+          billingCountry: "日本",
+          billingPrefecture: pick(["東京都", "大阪府", "愛知県", "神奈川県", "福岡県", "北海道"]),
+          businessSummary: `${companyName}は${config.industry}業界のリーディングカンパニーです。`,
+          painPoints: ["業務効率化", "コスト削減", "デジタル変革"],
+          objectives: ["売上拡大", "顧客満足度向上", "DX推進"],
+          technologies: pick([["AWS", "Salesforce"], ["Azure", "SAP"], ["GCP", "Slack"], ["AWS", "kintone"]]),
+          openPipelineAmount: randomBetween(0, 50_000_000),
+          wonAmount: isCustomer ? randomBetween(1_000_000, 100_000_000) : 0,
+          renewalDate: isCustomer ? daysFromNow(randomBetween(30, 365)) : null,
+        },
+      });
+
+      companies.push({ id: company.id, companyName: company.companyName, lifecycleStage, ownerId: owner.id });
+      companyIdx++;
+    }
+  }
+
+  console.log(`✅ ${companies.length}社の企業を作成`);
+
+  // ===================== Contacts (250+) =====================
+  console.log("👥 コンタクトを作成中...");
+
+  const maleFirstNames = ["太郎", "健一", "大輔", "拓也", "誠", "翔", "康介", "俊介", "浩二", "雄太", "隆", "剛"];
+  const femaleFirstNames = ["花子", "美咲", "裕子", "恵子", "理恵", "奈緒", "さくら", "由美", "麻衣", "愛", "奈々", "有希"];
+  const lastNames = ["田中", "鈴木", "佐藤", "高橋", "山田", "伊藤", "渡辺", "加藤", "吉田", "中村", "小林", "山本", "松本", "井上", "木村", "橋本", "山口", "石田", "福田", "清水"];
+
+  const decisionRoles = ["意思決定者", "評価担当", "情シス担当", "現場担当", "購買担当"];
+  const titlesByIndustry: Record<string, string[]> = {
+    "IT・ソフトウェア": ["CTO", "IT部長", "システム部長", "情報システム課長", "DX推進部長", "開発部長", "IT戦略部長"],
+    "製造": ["生産管理部長", "工場長", "IT推進部長", "調達部長", "品質管理部長"],
+    "金融": ["デジタル戦略部長", "システム統括部長", "情報企画部長", "リスク管理部長"],
+    "医療・ヘルスケア": ["医療情報部長", "事務長", "院長", "システム管理者", "業務改革担当"],
+    "流通・小売": ["EC事業部長", "デジタル推進部長", "営業部長", "マーケティング部長"],
+    "建設・不動産": ["DX推進室長", "情報システム部長", "技術部長"],
+    "物流": ["物流改革部長", "情報システム部長", "オペレーション部長"],
+    "教育": ["学習DX推進部長", "教育技術部長", "事務局長"],
+    "食品・飲食": ["生産管理部長", "IT推進部長", "品質管理部長"],
+    "商社": ["デジタル変革部長", "情報システム部長", "調達本部長"],
+  };
+
+  const contacts: Array<{ id: string; companyId: string }> = [];
+  const companyContacts: Map<string, string[]> = new Map();
+
+  for (let ci = 0; ci < companies.length; ci++) {
+    const company = companies[ci];
+    const numContacts = randomBetween(3, 5);
+    const industryKey = company.companyName.includes("テクノ") || company.companyName.includes("クラウド") || company.companyName.includes("デジタル") ? "IT・ソフトウェア" : "IT・ソフトウェア";
+
+    // Determine industry for title lookup
+    const industryTitles = titlesByIndustry["IT・ソフトウェア"];
+
+    const contactsForCompany: string[] = [];
+
+    for (let j = 0; j < numContacts; j++) {
+      const isMale = (ci + j) % 2 === 0;
+      const firstName = isMale ? maleFirstNames[(ci * 3 + j) % maleFirstNames.length] : femaleFirstNames[(ci * 3 + j) % femaleFirstNames.length];
+      const lastName = lastNames[(ci + j * 7) % lastNames.length];
+      const fullName = `${lastName} ${firstName}`;
+      const roleInDecision = decisionRoles[j % decisionRoles.length];
+      const title = j === 0 ? industryTitles[ci % industryTitles.length] : ["課長", "担当者", "主任", "マネージャー", "シニアエンジニア"][j % 5];
+      const dept = ["情報システム部", "経営企画部", "IT推進部", "購買部", "業務改革室", "DX推進部"][j % 6];
+      const emailDomain = company.companyName.replace(/株式会社|有限会社/g, "").toLowerCase().replace(/[\s・]/g, "");
+
+      const contact = await prisma.contact.create({
+        data: {
+          companyId: company.id,
+          fullName,
+          firstName,
+          lastName,
+          email: `${lastName.toLowerCase()}${j > 0 ? j : ""}@${emailDomain}.co.jp`,
+          phone: `0${randomBetween(3, 9)}-${randomBetween(1000, 9999)}-${randomBetween(1000, 9999)}`,
+          department: dept,
+          title,
+          roleInDecision,
+          isPrimary: j === 0,
+          ownerId: company.ownerId,
+          memo: j === 0 ? `${company.companyName}の主要担当者。${roleInDecision}として関わっている。` : null,
+        },
+      });
+
+      contacts.push({ id: contact.id, companyId: company.id });
+      contactsForCompany.push(contact.id);
+      void industryKey;
+    }
+
+    companyContacts.set(company.id, contactsForCompany);
+  }
+
+  console.log(`✅ ${contacts.length}件のコンタクトを作成`);
+
+  // ===================== Deals (180) =====================
+  console.log("💼 商談を作成中...");
+
+  interface DealConfig {
+    stage: string;
+    count: number;
+    probMin: number;
+    probMax: number;
+    amountMin: number;
+    amountMax: number;
+    forecastCategory: string;
+    closeDateOffsetMin: number;
+    closeDateOffsetMax: number;
+    isWon?: boolean;
+    isLost?: boolean;
+  }
+
+  const dealConfigs: DealConfig[] = [
+    { stage: "prospecting", count: 30, probMin: 5, probMax: 15, amountMin: 500_000, amountMax: 20_000_000, forecastCategory: "PIPELINE", closeDateOffsetMin: 60, closeDateOffsetMax: 180 },
+    { stage: "discovery", count: 35, probMin: 20, probMax: 35, amountMin: 1_000_000, amountMax: 50_000_000, forecastCategory: "PIPELINE", closeDateOffsetMin: 45, closeDateOffsetMax: 150 },
+    { stage: "proposal", count: 30, probMin: 40, probMax: 60, amountMin: 2_000_000, amountMax: 80_000_000, forecastCategory: "PIPELINE", closeDateOffsetMin: 30, closeDateOffsetMax: 120 },
+    { stage: "negotiation", count: 20, probMin: 65, probMax: 80, amountMin: 5_000_000, amountMax: 150_000_000, forecastCategory: "BEST_CASE", closeDateOffsetMin: 15, closeDateOffsetMax: 60 },
+    { stage: "won", count: 30, probMin: 100, probMax: 100, amountMin: 3_000_000, amountMax: 100_000_000, forecastCategory: "CLOSED", closeDateOffsetMin: -90, closeDateOffsetMax: -1, isWon: true },
+    { stage: "lost", count: 20, probMin: 0, probMax: 0, amountMin: 1_000_000, amountMax: 50_000_000, forecastCategory: "CLOSED", closeDateOffsetMin: -60, closeDateOffsetMax: -1, isLost: true },
+    { stage: "commit", count: 15, probMin: 85, probMax: 95, amountMin: 10_000_000, amountMax: 200_000_000, forecastCategory: "COMMIT", closeDateOffsetMin: 7, closeDateOffsetMax: 45 },
+  ];
+
+  const lostReasons = ["価格が合わなかった", "競合他社に負けた", "予算凍結", "担当者変更", "導入延期", "要件不一致"];
+  const riskLevels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
+
+  // Owner distribution weights: sales1=310, sales2=260, sales4=250, sales3=200, sales5=180, sales6=140
+  // We'll assign deals weighted accordingly
+  const dealOwnerPool: typeof salesUsers[number][] = [
+    ...Array(30).fill(sales1),
+    ...Array(25).fill(sales2),
+    ...Array(25).fill(sales4),
+    ...Array(20).fill(sales3),
+    ...Array(18).fill(sales5),
+    ...Array(14).fill(sales6),
+    ...Array(12).fill(manager1),
+    ...Array(12).fill(manager2),
+  ];
+
+  const deals: Array<{ id: string; companyId: string; stage: string; ownerId: string }> = [];
+  let dealIdx = 0;
+
+  for (const config of dealConfigs) {
+    for (let i = 0; i < config.count; i++) {
+      const company = companies[(dealIdx * 3 + i) % companies.length];
+      const companyContactList = companyContacts.get(company.id) ?? [];
+      const contactId = companyContactList[0] ?? null;
+      const owner = dealOwnerPool[dealIdx % dealOwnerPool.length];
+      const se = dealIdx % 5 < 2 ? seUsers[dealIdx % seUsers.length] : null;
+
+      const prob = randomBetween(config.probMin, config.probMax);
+      const amount = randomBetween(config.amountMin / 10_000, config.amountMax / 10_000) * 10_000;
+      const closeDate = daysFromNow(randomBetween(config.closeDateOffsetMin, config.closeDateOffsetMax));
+      const riskLevel = config.isWon || config.isLost ? null : pick(["LOW", "LOW", "MEDIUM", "MEDIUM", "HIGH", "CRITICAL"] as typeof riskLevels[number][]);
+      const lastActivityAt = config.isWon || config.isLost
+        ? daysAgo(randomBetween(1, 90))
+        : (dealIdx % 5 < 4 ? daysAgo(randomBetween(0, 30)) : (dealIdx % 10 < 1 ? null : daysAgo(randomBetween(31, 90))));
+
+      const dealNameTemplates = [
+        `${company.companyName} CRM導入プロジェクト`,
+        `${company.companyName} DXソリューション提案`,
+        `${company.companyName} システム刷新`,
+        `${company.companyName} 業務効率化支援`,
+        `${company.companyName} データ活用基盤構築`,
+        `${company.companyName} クラウド移行支援`,
+        `${company.companyName} MAツール導入`,
+        `${company.companyName} SFA刷新提案`,
+        `${company.companyName} AI活用推進`,
+        `${company.companyName} セキュリティ強化`,
+      ];
+      const dealName = dealNameTemplates[dealIdx % dealNameTemplates.length];
+
+      const deal = await prisma.deal.create({
+        data: {
+          companyId: company.id,
+          contactId,
+          dealName,
+          stage: config.stage,
+          forecastCategory: config.forecastCategory,
+          type: pick(["NEW_BUSINESS", "EXPANSION", "RENEWAL"]),
+          amount,
+          probability: prob,
+          expectedCloseDate: config.isWon || config.isLost ? null : closeDate,
+          closeDate: config.isWon || config.isLost ? closeDate : null,
+          ownerId: owner.id,
+          salesRepId: owner.id,
+          salesEngineerId: se?.id ?? null,
+          riskLevel,
+          lostReason: config.isLost ? pick(lostReasons) : null,
+          lastActivityAt,
+          memo: `${company.companyName}との${config.stage}フェーズの商談。担当: ${owner.name}`,
+          nextAction: config.isWon || config.isLost ? null : pick([
+            "提案書を送付する", "デモを実施する", "ヒアリングを行う", "見積もりを提出する", "役員プレゼンを調整する", "フォローアップコールをする",
+          ]),
+        },
+      });
+
+      deals.push({ id: deal.id, companyId: company.id, stage: config.stage, ownerId: owner.id });
+      dealIdx++;
+    }
+  }
+
+  console.log(`✅ ${deals.length}件の商談を作成`);
+
+  // ===================== Activities (1500) =====================
+  console.log("📋 活動を作成中...");
+
+  const activityTypes = ["CALL", "EMAIL", "MEETING", "DEMO", "PROPOSAL", "NEGOTIATION", "FOLLOW_UP", "NOTE"] as const;
+  const outcomes = ["POSITIVE", "NEUTRAL", "NEGATIVE", "NO_RESPONSE", "NEXT_STEP_CREATED", "COMPLETED"] as const;
+
+  const subjectTemplatesByType: Record<typeof activityTypes[number], string[]> = {
+    CALL: ["定期コール", "フォローアップコール", "状況確認コール", "初回コール", "提案後フォローコール"],
+    EMAIL: ["提案資料送付", "議事録送付", "見積書送付", "フォローアップメール", "情報提供メール"],
+    MEETING: ["キックオフMTG", "ヒアリング商談", "レビューMTG", "デモ後MTG", "役員プレゼン"],
+    DEMO: ["製品デモ", "POC説明", "機能紹介デモ", "カスタムデモ"],
+    PROPOSAL: ["提案", "ROI提案", "初回提案", "追加提案"],
+    NEGOTIATION: ["価格交渉", "契約条件調整", "最終交渉"],
+    FOLLOW_UP: ["フォローアップ", "検討状況確認", "次回日程調整"],
+    NOTE: ["情報更新", "商談メモ", "社内共有メモ", "会議メモ"],
+  };
+
+  const outcomeWeights = [
+    ...Array(30).fill("POSITIVE"),
+    ...Array(30).fill("NEUTRAL"),
+    ...Array(10).fill("NEGATIVE"),
+    ...Array(15).fill("NO_RESPONSE"),
+    ...Array(10).fill("NEXT_STEP_CREATED"),
+    ...Array(5).fill("COMPLETED"),
+  ] as (typeof outcomes[number])[];
+
+  // User activity targets: sales1=310, sales2=260, sales4=250, sales3=200, sales5=180, sales6=140, mgr1=80, mgr2=80 = 1500
+  const userActivityTargets: Array<{ user: typeof salesUsers[number]; count: number }> = [
+    { user: sales1, count: 310 },
+    { user: sales2, count: 260 },
+    { user: sales4, count: 250 },
+    { user: sales3, count: 200 },
+    { user: sales5, count: 180 },
+    { user: sales6, count: 140 },
+    { user: manager1, count: 80 },
+    { user: manager2, count: 80 },
+  ];
+
+  // Pre-build overdue activity dates pool: ~50 activities between 2026-04-01 and 2026-05-10
+  let overdueCount = 0;
+  const maxOverdue = 50;
+
+  const activityCountByDeal: Map<string, { total: number; meeting: number; call: number; email: number; lastDate: Date | null }> = new Map();
+  const activityCountByCompany: Map<string, Date | null> = new Map();
+
+  for (const d of deals) {
+    activityCountByDeal.set(d.id, { total: 0, meeting: 0, call: 0, email: 0, lastDate: null });
+  }
+  for (const c of companies) {
+    activityCountByCompany.set(c.id, null);
+  }
+
+  let totalActivitiesCreated = 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allActivityData: any[] = [];
+
+  for (const { user, count } of userActivityTargets) {
+    // Get deals owned by this user
+    const userDeals = deals.filter((d) => d.ownerId === user.id);
+    const userCompanies = companies.filter((c) => c.ownerId === user.id);
+
+    for (let i = 0; i < count; i++) {
+      // Assign to deal or just company
+      const hasDeals = userDeals.length > 0;
+      const useDeal = hasDeals && i % 3 !== 2; // 2/3 linked to deals
+
+      let dealId: string | null = null;
+      let companyId: string | null = null;
+      let contactId: string | null = null;
+
+      if (useDeal) {
+        const deal = userDeals[i % userDeals.length];
+        dealId = deal.id;
+        companyId = deal.companyId;
+        const contactList = companyContacts.get(companyId) ?? [];
+        contactId = contactList[i % Math.max(contactList.length, 1)] ?? null;
+      } else {
+        const company = userCompanies.length > 0 ? userCompanies[i % userCompanies.length] : companies[i % companies.length];
+        companyId = company.id;
+        const contactList = companyContacts.get(companyId) ?? [];
+        contactId = contactList[0] ?? null;
+      }
+
+      const actType = activityTypes[i % activityTypes.length];
+      const subjectTemplates = subjectTemplatesByType[actType];
+      const subjectTemplate = subjectTemplates[i % subjectTemplates.length];
+      const companyName = companyId ? (companies.find((c) => c.id === companyId)?.companyName ?? "取引先") : "取引先";
+      const subject = `${companyName} ${subjectTemplate}`;
+
+      // Date distribution: 60% last 3 months, 30% 3-6 months, 10% 6-12 months
+      let activityDate: Date;
+      const r = i % 10;
+      if (r < 6) {
+        activityDate = daysAgo(randomBetween(0, 90));
+      } else if (r < 9) {
+        activityDate = daysAgo(randomBetween(91, 180));
+      } else {
+        activityDate = daysAgo(randomBetween(181, 365));
+      }
+
+      const outcome = pick(outcomeWeights);
+
+      // nextActionDueDate: ~50 overdue
+      let nextActionDueDate: Date | null = null;
+      if (overdueCount < maxOverdue && i % 12 === 0) {
+        const overdueDay = randomBetween(6, 45);
+        nextActionDueDate = daysAgo(overdueDay); // past = overdue
+        overdueCount++;
+      } else if (outcome === "NEXT_STEP_CREATED" || outcome === "POSITIVE") {
+        nextActionDueDate = daysFromNow(randomBetween(3, 30));
+      }
+
+      allActivityData.push({
+        companyId,
+        contactId,
+        dealId,
+        type: actType.toLowerCase(),
+        subject,
+        body: `${subject}を実施。${outcome === "POSITIVE" ? "良い反応あり。前向きに検討中。" : outcome === "NEGATIVE" ? "厳しい状況。再アプローチが必要。" : "通常の対応を実施。"}`,
+        outcome,
+        ownerId: user.id,
+        createdById: user.id,
+        activityDate,
+        nextAction: nextActionDueDate ? "次回アクションの実施" : null,
+        nextActionDueDate,
+        durationMinutes: actType === "MEETING" ? randomBetween(30, 120) : actType === "CALL" ? randomBetween(5, 45) : null,
+      });
+
+      // Update counters (tracked in memory)
+      if (dealId) {
+        const counters = activityCountByDeal.get(dealId)!;
+        counters.total++;
+        if (actType === "MEETING") counters.meeting++;
+        if (actType === "CALL") counters.call++;
+        if (actType === "EMAIL") counters.email++;
+        if (!counters.lastDate || activityDate > counters.lastDate) counters.lastDate = activityDate;
+        activityCountByDeal.set(dealId, counters);
+      }
+      if (companyId) {
+        const lastDate = activityCountByCompany.get(companyId);
+        if (!lastDate || activityDate > lastDate) {
+          activityCountByCompany.set(companyId, activityDate);
+        }
+      }
+
+      totalActivitiesCreated++;
+    }
+  }
+
+  // Batch create activities in chunks of 200 for efficiency
+  const CHUNK = 200;
+  for (let i = 0; i < allActivityData.length; i += CHUNK) {
+    const chunk = allActivityData.slice(i, i + CHUNK);
+    await prisma.activity.createMany({ data: chunk });
+  }
+
+  console.log(`✅ ${totalActivitiesCreated}件の活動を作成`);
+
+  // Update deal activity counts in parallel batches
+  console.log("🔄 商談の活動カウントを更新中...");
+  const dealUpdateEntries = [...activityCountByDeal.entries()].filter(([, c]) => c.total > 0);
+  for (let i = 0; i < dealUpdateEntries.length; i += 20) {
+    await Promise.all(
+      dealUpdateEntries.slice(i, i + 20).map(([dealId, counters]) =>
+        prisma.deal.update({
+          where: { id: dealId },
+          data: {
+            activityCount: counters.total,
+            meetingCount: counters.meeting,
+            callCount: counters.call,
+            emailCount: counters.email,
+            lastActivityAt: counters.lastDate,
+          },
+        })
+      )
+    );
+  }
+
+  // Update company lastActivityAt in parallel batches
+  console.log("🔄 企業の最終活動日を更新中...");
+  const companyUpdateEntries = [...activityCountByCompany.entries()].filter(([, d]) => d != null);
+  for (let i = 0; i < companyUpdateEntries.length; i += 20) {
+    await Promise.all(
+      companyUpdateEntries.slice(i, i + 20).map(([companyId, lastDate]) =>
+        prisma.company.update({
+          where: { id: companyId },
+          data: { lastActivityAt: lastDate },
+        })
+      )
+    );
+  }
+
+  // ===================== Tasks (500) =====================
+  console.log("✅ タスクを作成中...");
+
+  const taskTitles = [
+    "提案書の作成", "見積書の送付", "デモ環境の準備", "ヒアリングシートの整理",
+    "役員プレゼン資料作成", "契約書ドラフト確認", "フォローアップメールの送信",
+    "競合比較資料の作成", "ROI試算の更新", "顧客との日程調整",
+    "内部レビューの実施", "承認依頼の提出", "技術検証の実施", "セキュリティ要件確認",
+    "PoC計画書作成", "次回MTGの準備", "議事録の送付", "課題リストの更新",
+    "参考情報の収集", "社内共有会の準備",
+  ];
+
+  const taskPriorities = ["high", "medium", "low"] as const;
+  // 200 done, 150 in_progress, 150 todo, ~80 overdue (non-done, past dueDate)
+  const taskStatusPool = [
+    ...Array(200).fill("done"),
+    ...Array(150).fill("in_progress"),
+    ...Array(150).fill("todo"),
+  ];
+
+  const allTaskData = [];
+  for (let i = 0; i < 500; i++) {
+    const status = taskStatusPool[i] ?? "todo";
+    const assignee = salesUsers[i % salesUsers.length];
+    const company = companies[i % companies.length];
+    const deal = i % 3 !== 2 ? deals[i % deals.length] : null;
+    const priority = taskPriorities[i % taskPriorities.length];
+
+    let dueDate: Date;
+    const isOverdue = i >= 350 && i < 430; // ~80 overdue tasks
+    if (status === "done") {
+      dueDate = daysAgo(randomBetween(1, 60));
+    } else if (isOverdue) {
+      dueDate = daysAgo(randomBetween(1, 45));
+    } else {
+      dueDate = daysFromNow(randomBetween(1, 60));
+    }
+
+    allTaskData.push({
+      companyId: company.id,
+      dealId: deal?.id ?? null,
+      assigneeId: assignee.id,
+      title: taskTitles[i % taskTitles.length],
+      description: `${company.companyName}に関する${taskTitles[i % taskTitles.length]}を実施する。担当: ${assignee.name}`,
+      dueDate,
+      priority,
+      status,
+    });
+  }
+  await prisma.task.createMany({ data: allTaskData });
+
+  console.log("✅ 500件のタスクを作成");
+
+  // ===================== Cases (150) =====================
+  console.log("📁 ケースを作成中...");
+
+  const caseSubjects = [
+    "ログインできない", "データが同期しない", "レポートが表示されない",
+    "インポートエラーが発生する", "メール送信が失敗する", "APIが応答しない",
+    "パフォーマンスが遅い", "設定変更が反映されない", "エクスポートが失敗する",
+    "通知が届かない", "ダッシュボードが読み込めない", "検索結果が不正確",
+    "カスタムフィールドが保存されない", "CSVインポートで文字化けする",
+  ];
+  const caseStatuses = ["New", "Open", "Pending Customer", "Closed"] as const;
+  const casePriorities = ["Critical", "High", "Medium", "Low"] as const;
+  const caseTypes = ["Question", "Bug", "Feature Request", "Other"] as const;
+  const caseOrigins = ["Email", "Phone", "Web", "Chat"] as const;
+
+  const allCaseData = [];
+  for (let i = 0; i < 150; i++) {
+    const company = companies[i % companies.length];
+    const status = caseStatuses[i % caseStatuses.length];
+    const year = 2026;
+    const caseNumber = `C-${year}-${String(i + 1).padStart(4, "0")}`;
+
+    allCaseData.push({
+      caseNumber,
+      subject: `${caseSubjects[i % caseSubjects.length]} (#${i + 1})`,
+      description: `${company.companyName}より報告。詳細な再現手順と環境情報を確認中。`,
+      status,
+      priority: casePriorities[i % casePriorities.length],
+      type: caseTypes[i % caseTypes.length],
+      origin: caseOrigins[i % caseOrigins.length],
+      companyId: company.id,
+      ownerId: salesUsers[i % salesUsers.length].id,
+      resolvedAt: status === "Closed" ? daysAgo(randomBetween(1, 30)) : null,
+      resolution: status === "Closed" ? "設定を修正して問題を解決しました。" : null,
+    });
+  }
+  await prisma.case.createMany({ data: allCaseData });
+
+  console.log("✅ 150件のケースを作成");
+
+  // ===================== Reports (10) =====================
+  console.log("📊 レポートを作成中...");
+
+  const reportDefs = [
+    {
+      name: "商談パイプライン一覧",
+      objectType: "deal",
+      columns: ["dealName", "stage", "amount", "probability", "expectedCloseDate", "company.companyName", "owner.name"],
+      description: "全商談のパイプライン一覧",
+      sortField: "expectedCloseDate",
+      sortDir: "asc",
+      filters: [{ field: "stage", operator: "not_in", value: ["won", "lost"] }],
+    },
+    {
+      name: "ステージ別商談サマリー",
+      objectType: "deal",
+      columns: ["stage", "amount", "probability"],
+      description: "ステージ別の商談集計",
+      sortField: "amount",
+      sortDir: "desc",
+      groupBy: "stage",
+      filters: [],
+    },
+    {
+      name: "取引先一覧",
+      objectType: "company",
+      columns: ["companyName", "industry", "tier", "lifecycleStage", "healthScore", "arr", "owner.name"],
+      description: "全取引先企業の一覧",
+      sortField: "companyName",
+      sortDir: "asc",
+      filters: [],
+    },
+    {
+      name: "活動タイムライン",
+      objectType: "activity",
+      columns: ["type", "subject", "activityDate", "outcome", "company.companyName", "owner.name"],
+      description: "直近の活動履歴タイムライン",
+      sortField: "activityDate",
+      sortDir: "desc",
+      filters: [],
+    },
+    {
+      name: "タスク一覧",
+      objectType: "task",
+      columns: ["title", "status", "priority", "dueDate", "assignee.name", "company.companyName"],
+      description: "全タスクの一覧",
+      sortField: "dueDate",
+      sortDir: "asc",
+      filters: [],
+    },
+    {
+      name: "商談ファネル分析",
+      objectType: "deal",
+      columns: ["stage", "amount"],
+      description: "商談のステージ別ファネル分析",
+      sortField: null,
+      sortDir: "desc",
+      groupBy: "stage",
+      filters: [],
+    },
+    {
+      name: "営業担当者別活動サマリー",
+      objectType: "activity",
+      columns: ["owner.name", "type"],
+      description: "担当者別の活動タイプ集計",
+      sortField: null,
+      sortDir: "desc",
+      groupBy: "owner.name",
+      filters: [],
+    },
+    {
+      name: "営業担当者別パイプライン",
+      objectType: "deal",
+      columns: ["owner.name", "stage", "amount"],
+      description: "担当者別の商談パイプライン",
+      sortField: "amount",
+      sortDir: "desc",
+      groupBy: "owner.name",
+      filters: [{ field: "stage", operator: "not_in", value: ["won", "lost"] }],
+    },
+    {
+      name: "活動なし商談レポート",
+      objectType: "deal",
+      columns: ["dealName", "stage", "amount", "lastActivityAt", "company.companyName", "owner.name"],
+      description: "30日以上活動がない商談の一覧",
+      sortField: "lastActivityAt",
+      sortDir: "asc",
+      filters: [{ field: "lastActivityAt", operator: "lt", value: "30d" }],
+    },
+    {
+      name: "担当者別フォローアップ漏れ",
+      objectType: "activity",
+      columns: ["subject", "nextActionDueDate", "owner.name", "company.companyName"],
+      description: "期限切れのフォローアップ活動",
+      sortField: "nextActionDueDate",
+      sortDir: "asc",
+      filters: [{ field: "nextActionDueDate", operator: "lt", value: "today" }],
+    },
+  ];
+
+  const createdReports = await Promise.all(
+    reportDefs.map((r) =>
+      prisma.report.create({
+        data: {
+          name: r.name,
+          description: r.description,
+          objectType: r.objectType,
+          columns: r.columns,
+          filters: r.filters as object[],
+          sortField: r.sortField ?? null,
+          sortDir: r.sortDir,
+          groupBy: (r as { groupBy?: string }).groupBy ?? null,
+          isPublic: true,
+          createdById: adminUser.id,
+        },
+      })
+    )
+  );
+
+  const [dealPipelineReport, stageSummaryReport, companyListReport, activityTimelineReport, taskListReport, funnelReport, activitySummaryReport, dealByRepReport, staleDealsReport, followupReport] = createdReports;
+
+  console.log(`✅ ${createdReports.length}件のレポートを作成`);
+
+  // ===================== Dashboards (2) =====================
+  console.log("📈 ダッシュボードを作成中...");
+
   const salesDashboard = await prisma.dashboard.create({
     data: {
       name: "営業ダッシュボード",
@@ -893,153 +1076,80 @@ async function main() {
       ownerId: adminUser.id,
     },
   });
-  const managerDashboard = await prisma.dashboard.create({
-    data: {
-      name: "マネージャーダッシュボード",
-      description: "チーム全体のパフォーマンス管理",
-      visibility: "TEAM",
-      defaultDateRange: "thisQuarter",
-      ownerId: adminUser.id,
-    },
-  });
+
   const activityDashboard = await prisma.dashboard.create({
     data: {
-      name: "活動管理ダッシュボード",
-      description: "活動履歴とタスクの進捗管理",
+      name: "営業活動分析ダッシュボード",
+      description: "活動履歴と担当者別分析",
       visibility: "PUBLIC",
       defaultDateRange: "last30",
       ownerId: adminUser.id,
     },
   });
 
-  // 営業ダッシュボード widgets
+  // Sales Dashboard Widgets
   await Promise.all([
     prisma.dashboardWidget.create({
-      data: {
-        dashboardId: salesDashboard.id,
-        reportId: dealReport.id,
-        title: "商談件数（今月）",
-        widgetType: "KPI",
-        config: { metric: "count", format: "number" },
-        size: "SMALL",
-        sortOrder: 0,
-      },
+      data: { dashboardId: salesDashboard.id, reportId: dealPipelineReport.id, title: "商談件数（今月）", widgetType: "KPI", config: { metric: "count", format: "number" }, size: "SMALL", sortOrder: 0 },
     }),
     prisma.dashboardWidget.create({
-      data: {
-        dashboardId: salesDashboard.id,
-        reportId: dealReport.id,
-        title: "商談金額合計（今月）",
-        widgetType: "KPI",
-        config: { metric: "sumAmount", format: "currency" },
-        size: "SMALL",
-        sortOrder: 1,
-      },
+      data: { dashboardId: salesDashboard.id, reportId: dealPipelineReport.id, title: "パイプライン金額合計", widgetType: "KPI", config: { metric: "sumAmount", format: "currency" }, size: "SMALL", sortOrder: 1 },
     }),
     prisma.dashboardWidget.create({
-      data: {
-        dashboardId: salesDashboard.id,
-        reportId: stageReport.id,
-        title: "ステージ別商談金額",
-        widgetType: "BAR",
-        config: { orientation: "horizontal", yAxis: "amount" },
-        size: "MEDIUM",
-        sortOrder: 2,
-      },
+      data: { dashboardId: salesDashboard.id, reportId: stageSummaryReport.id, title: "ステージ別商談金額", widgetType: "BAR", config: { orientation: "horizontal", yAxis: "amount" }, size: "MEDIUM", sortOrder: 2 },
     }),
     prisma.dashboardWidget.create({
-      data: {
-        dashboardId: salesDashboard.id,
-        reportId: dealReport.id,
-        title: "商談一覧",
-        widgetType: "TABLE",
-        config: { limit: "10" },
-        size: "WIDE",
-        sortOrder: 3,
-      },
+      data: { dashboardId: salesDashboard.id, reportId: funnelReport.id, title: "商談ファネル", widgetType: "FUNNEL", config: { metric: "amount" }, size: "MEDIUM", sortOrder: 3 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: salesDashboard.id, reportId: dealPipelineReport.id, title: "商談一覧", widgetType: "TABLE", config: { limit: "15" }, size: "WIDE", sortOrder: 4 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: salesDashboard.id, reportId: staleDealsReport.id, title: "活動なし商談", widgetType: "TABLE", config: { limit: "10" }, size: "MEDIUM", sortOrder: 5 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: salesDashboard.id, reportId: dealByRepReport.id, title: "担当者別パイプライン", widgetType: "BAR", config: { xAxis: "owner", yAxis: "amount", orientation: "horizontal" }, size: "MEDIUM", sortOrder: 6 },
     }),
   ]);
 
-  // マネージャーダッシュボード widgets
+  // Activity Dashboard Widgets
   await Promise.all([
     prisma.dashboardWidget.create({
-      data: {
-        dashboardId: managerDashboard.id,
-        reportId: stageReport.id,
-        title: "ステージ別商談（ファネル）",
-        widgetType: "FUNNEL",
-        config: { metric: "amount" },
-        size: "MEDIUM",
-        sortOrder: 0,
-      },
+      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "活動件数（今月）", widgetType: "KPI", config: { metric: "count", format: "number" }, size: "SMALL", sortOrder: 0 },
     }),
     prisma.dashboardWidget.create({
-      data: {
-        dashboardId: managerDashboard.id,
-        reportId: stageReport.id,
-        title: "ステージ別件数",
-        widgetType: "PIE",
-        config: {},
-        size: "MEDIUM",
-        sortOrder: 1,
-      },
+      data: { dashboardId: activityDashboard.id, reportId: activitySummaryReport.id, title: "担当者別活動件数", widgetType: "BAR", config: { xAxis: "owner", yAxis: "count", orientation: "horizontal" }, size: "MEDIUM", sortOrder: 1 },
     }),
     prisma.dashboardWidget.create({
-      data: {
-        dashboardId: managerDashboard.id,
-        reportId: dealReport.id,
-        title: "商談一覧（今四半期）",
-        widgetType: "TABLE",
-        config: { limit: "20" },
-        size: "WIDE",
-        sortOrder: 2,
-      },
+      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "活動タイムライン", widgetType: "TABLE", config: { limit: "20" }, size: "WIDE", sortOrder: 2 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: activityDashboard.id, reportId: followupReport.id, title: "フォローアップ期限切れ", widgetType: "TABLE", config: { limit: "10" }, size: "MEDIUM", sortOrder: 3 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: activityDashboard.id, reportId: taskListReport.id, title: "タスク一覧", widgetType: "TABLE", config: { limit: "10" }, size: "MEDIUM", sortOrder: 4 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: activityDashboard.id, reportId: companyListReport.id, title: "企業一覧", widgetType: "TABLE", config: { limit: "10" }, size: "MEDIUM", sortOrder: 5 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "種別別活動件数", widgetType: "DONUT", config: { xAxis: "type" }, size: "SMALL", sortOrder: 6 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "月次活動推移", widgetType: "LINE", config: { dateGroup: "month" }, size: "WIDE", sortOrder: 7 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "結果別集計", widgetType: "PIE", config: { xAxis: "outcome" }, size: "SMALL", sortOrder: 8 },
+    }),
+    prisma.dashboardWidget.create({
+      data: { dashboardId: activityDashboard.id, reportId: activityTimelineReport.id, title: "活動メトリクス", widgetType: "KPI", config: { metric: "count", format: "number" }, size: "SMALL", sortOrder: 9 },
     }),
   ]);
 
-  // 活動管理ダッシュボード widgets
-  await Promise.all([
-    prisma.dashboardWidget.create({
-      data: {
-        dashboardId: activityDashboard.id,
-        reportId: activityReport.id,
-        title: "活動件数",
-        widgetType: "KPI",
-        config: { metric: "count", format: "number" },
-        size: "SMALL",
-        sortOrder: 0,
-      },
-    }),
-    prisma.dashboardWidget.create({
-      data: {
-        dashboardId: activityDashboard.id,
-        reportId: activityReport.id,
-        title: "活動履歴",
-        widgetType: "TABLE",
-        config: { limit: "15" },
-        size: "WIDE",
-        sortOrder: 1,
-      },
-    }),
-    prisma.dashboardWidget.create({
-      data: {
-        dashboardId: activityDashboard.id,
-        reportId: companyReport.id,
-        title: "企業一覧",
-        widgetType: "TABLE",
-        config: { limit: "10" },
-        size: "MEDIUM",
-        sortOrder: 2,
-      },
-    }),
-  ]);
+  console.log("✅ 2つのダッシュボードを作成");
 
-  void dealReport; void stageReport; void activityReport; void companyReport; void taskReport; void funnelReport;
-
-  // =================== MA Seed Data ===================
-
-  // Prospects
-  const prospectData = [
+  // ===================== MA Seed (minimal — keep existing structure) =====================
+  const prospects = await Promise.all([
     { email: "tanaka.kenji@techcorp.co.jp", firstName: "健二", lastName: "田中", companyName: "テクノロジー株式会社", jobTitle: "CTO", score: 85, grade: "A", source: "web" },
     { email: "yamada.haruki@startup.io", firstName: "春樹", lastName: "山田", companyName: "スタートアップ合同会社", jobTitle: "CEO", score: 120, grade: "A+", source: "web" },
     { email: "suzuki.yuki@enterprise.jp", firstName: "由紀", lastName: "鈴木", companyName: "エンタープライズ商事", jobTitle: "購買部長", score: 45, grade: "B", source: "import" },
@@ -1050,32 +1160,19 @@ async function main() {
     { email: "kato.misa@retail.co.jp", firstName: "美沙", lastName: "加藤", companyName: "リテール株式会社", jobTitle: "店長", score: 20, grade: "D", source: "web" },
     { email: "yoshida.takumi@saas.io", firstName: "匠", lastName: "吉田", companyName: "SaaS企業", jobTitle: "VP Sales", score: 150, grade: "A+", source: "web" },
     { email: "hayashi.nana@healthcare.jp", firstName: "奈々", lastName: "林", companyName: "ヘルスケア株式会社", jobTitle: "人事部長", score: 10, grade: "D", source: "manual" },
-    { email: "kimura.taro@logistics.co.jp", firstName: "太郎", lastName: "木村", companyName: "物流株式会社", jobTitle: "部長", score: 40, grade: "C", source: "web" },
-    { email: "shimizu.hanako@education.jp", firstName: "花子", lastName: "清水", companyName: "教育機関", jobTitle: "理事長", score: 75, grade: "B", source: "import" },
-    { email: "inoue.ken@media.co.jp", firstName: "健", lastName: "井上", companyName: "メディア会社", jobTitle: "編集長", score: 60, grade: "B", source: "web" },
-    { email: "sasaki.yumi@tourism.jp", firstName: "由美", lastName: "佐々木", companyName: "観光業", jobTitle: "代表取締役", score: 35, grade: "C", source: "web" },
-    { email: "yamaguchi.daisuke@auto.co.jp", firstName: "大輔", lastName: "山口", companyName: "自動車メーカー", jobTitle: "調達担当", score: 80, grade: "A", source: "import" },
-  ];
+  ].map((p) => prisma.prospect.create({ data: { ...p, status: "active", lastActivityAt: new Date() } })));
 
-  const prospects = await Promise.all(
-    prospectData.map((p) => prisma.prospect.create({ data: { ...p, status: "active", lastActivityAt: new Date() } }))
-  );
-
-  // Marketing Lists
-  const [listAll, listHot, listNew] = await Promise.all([
+  const [listAll, listHot] = await Promise.all([
     prisma.marketingList.create({ data: { name: "全プロスペクト", description: "全ての有効なプロスペクト", type: "static", createdById: adminUser.id } }),
     prisma.marketingList.create({ data: { name: "ホットリード", description: "スコア70以上", type: "static", createdById: adminUser.id } }),
     prisma.marketingList.create({ data: { name: "新規リード（Web流入）", description: "Web経由の新規リード", type: "static", createdById: adminUser.id } }),
   ]);
 
-  // Add members to lists
   await Promise.all([
     ...prospects.map((p) => prisma.marketingListMembership.create({ data: { listId: listAll.id, prospectId: p.id, addedBy: "import" } })),
     ...prospects.filter((p) => p.score >= 70).map((p) => prisma.marketingListMembership.create({ data: { listId: listHot.id, prospectId: p.id, addedBy: "automation" } })),
-    ...prospects.filter((p) => p.source === "web").map((p) => prisma.marketingListMembership.create({ data: { listId: listNew.id, prospectId: p.id, addedBy: "automation" } })),
   ]);
 
-  // Email Template
   const template = await prisma.emailTemplate.create({
     data: {
       name: "製品紹介テンプレート",
@@ -1083,23 +1180,15 @@ async function main() {
       previewText: "貴社の課題解決をサポートします",
       fromName: "営業チーム",
       fromEmail: "sales@example.com",
-      bodyHtml: `<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-<h2 style="color:#0176d3;">{{first_name}}様</h2>
-<p>平素よりお世話になっております。</p>
-<p>この度は弊社サービスにご興味をお持ちいただきありがとうございます。</p>
-<p>{{company}}様の課題解決に向けて、弊社ソリューションをご提案させていただきたいと存じます。</p>
-<p style="margin-top:20px;"><a href="#" style="background:#0176d3;color:white;padding:12px 24px;border-radius:4px;text-decoration:none;">詳細を見る</a></p>
-<p style="margin-top:30px;font-size:12px;color:#999;">配信停止をご希望の方は<a href="{{unsubscribe_url}}">こちら</a></p>
-</body></html>`,
+      bodyHtml: `<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;"><h2 style="color:#0176d3;">{{first_name}}様</h2><p>平素よりお世話になっております。</p><p>{{company}}様の課題解決に向けて、弊社ソリューションをご提案させていただきたいと存じます。</p><p style="margin-top:20px;"><a href="#" style="background:#0176d3;color:white;padding:12px 24px;border-radius:4px;text-decoration:none;">詳細を見る</a></p><p style="margin-top:30px;font-size:12px;color:#999;">配信停止をご希望の方は<a href="{{unsubscribe_url}}">こちら</a></p></body></html>`,
       type: "regular",
       createdById: adminUser.id,
     },
   });
 
-  // Marketing Emails
   const email1 = await prisma.marketingEmail.create({
     data: {
-      name: "2024年 春のキャンペーン",
+      name: "2026年 春のキャンペーン",
       subject: "春の特別オファーをお届けします",
       fromName: "マーケティングチーム",
       fromEmail: "marketing@example.com",
@@ -1107,46 +1196,15 @@ async function main() {
       listId: listAll.id,
       bodyHtml: template.bodyHtml,
       status: "sent",
-      sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      totalSent: 15,
-      totalOpened: 8,
-      totalClicked: 3,
+      sentAt: daysAgo(7),
+      totalSent: 10,
+      totalOpened: 6,
+      totalClicked: 2,
       createdById: adminUser.id,
     },
   });
+  void email1;
 
-  const email2 = await prisma.marketingEmail.create({
-    data: {
-      name: "ホットリード向けフォローアップ",
-      subject: "【重要】ご提案資料をお送りします",
-      fromName: "営業チーム",
-      fromEmail: "sales@example.com",
-      listId: listHot.id,
-      bodyHtml: "<p>先日はお問い合わせありがとうございました。</p>",
-      status: "draft",
-      createdById: adminUser.id,
-    },
-  });
-
-  void email1; void email2;
-
-  // Prospect Activities
-  await Promise.all(
-    prospects.slice(0, 5).map((p) =>
-      prisma.prospectActivity.create({
-        data: { prospectId: p.id, type: "email_send", description: "春のキャンペーンメール送信", score: 0, metadata: { emailId: email1.id } },
-      })
-    )
-  );
-  await Promise.all(
-    prospects.slice(0, 3).map((p) =>
-      prisma.prospectActivity.create({
-        data: { prospectId: p.id, type: "email_open", description: "春のキャンペーンメール開封", score: 5 },
-      })
-    )
-  );
-
-  // Marketing Form
   const form = await prisma.marketingForm.create({
     data: {
       name: "資料請求フォーム",
@@ -1155,7 +1213,6 @@ async function main() {
         { id: "f1", type: "email", label: "メールアドレス", name: "email", required: true },
         { id: "f2", type: "text", label: "名前", name: "name", required: true },
         { id: "f3", type: "text", label: "会社名", name: "company", required: false },
-        { id: "f4", type: "text", label: "電話番号", name: "phone", required: false },
       ] as object[],
       thankYouMsg: "資料請求を受け付けました。2営業日以内にご連絡いたします。",
       isActive: true,
@@ -1163,25 +1220,13 @@ async function main() {
     },
   });
 
-  // Landing Page
   await prisma.landingPage.create({
     data: {
       name: "製品紹介LP",
       title: "業務効率を劇的に改善するCRMソリューション",
       slug: "product-overview",
       description: "製品の主要機能と導入メリットを紹介するページ",
-      bodyHtml: `<div style="max-width:800px;margin:0 auto;padding:40px 20px;font-family:sans-serif;">
-<h1 style="color:#0176d3;font-size:2.5em;">業務効率を劇的に改善するCRM</h1>
-<p style="font-size:1.2em;color:#444;margin:20px 0;">営業チームの生産性を最大化し、顧客満足度を向上させます。</p>
-<div style="background:#f0f4ff;padding:30px;border-radius:8px;margin:30px 0;">
-<h2>主な機能</h2>
-<ul>
-<li>顧客・商談管理</li>
-<li>マーケティングオートメーション</li>
-<li>レポート・ダッシュボード</li>
-</ul>
-</div>
-</div>`,
+      bodyHtml: "<div><h1>業務効率を劇的に改善するCRM</h1></div>",
       status: "published",
       publishedAt: new Date(),
       views: 342,
@@ -1189,17 +1234,13 @@ async function main() {
     },
   });
 
-  // Scoring Rules
   await Promise.all([
     prisma.scoringRule.create({ data: { name: "メール開封", category: "behavior", triggerType: "email_open", scoreChange: 5, isActive: true } }),
     prisma.scoringRule.create({ data: { name: "メールクリック", category: "behavior", triggerType: "email_click", scoreChange: 10, isActive: true } }),
     prisma.scoringRule.create({ data: { name: "フォーム送信", category: "behavior", triggerType: "form_submit", scoreChange: 25, isActive: true } }),
     prisma.scoringRule.create({ data: { name: "価格ページ閲覧", category: "behavior", triggerType: "page_view_pricing", scoreChange: 15, isActive: true } }),
-    prisma.scoringRule.create({ data: { name: "製品ページ閲覧", category: "behavior", triggerType: "page_view_product", scoreChange: 5, isActive: true } }),
-    prisma.scoringRule.create({ data: { name: "メールバウンス", category: "behavior", triggerType: "email_bounce", scoreChange: -10, isActive: true } }),
   ]);
 
-  // Automation Rules
   await Promise.all([
     prisma.automationRule.create({
       data: {
@@ -1225,35 +1266,42 @@ async function main() {
         createdById: adminUser.id,
       },
     }),
-    prisma.automationRule.create({
-      data: {
-        name: "新規プロスペクト全体リスト追加",
-        description: "プロスペクト作成時に全体リストへ自動追加",
-        triggerType: "prospect_created",
-        triggerConf: {} as object,
-        conditions: [] as object[],
-        actions: [{ type: "add_to_list", config: { listId: listAll.id } }] as object[],
-        isActive: true,
-        createdById: adminUser.id,
-      },
-    }),
   ]);
 
-  // ===================== New Standard Objects Seed =====================
+  await prisma.gradingProfile.create({
+    data: {
+      name: "標準グレーディング",
+      description: "業種・役職・会社規模に基づくグレード判定",
+      criteria: [
+        { field: "jobTitle", contains: "CEO", gradeBoost: 2 },
+        { field: "jobTitle", contains: "部長", gradeBoost: 1 },
+        { field: "industry", value: "IT", gradeBoost: 1 },
+      ] as object[],
+      isDefault: true,
+    },
+  });
 
-  // Leads (120 records)
+  const program = await prisma.engagementProgram.create({
+    data: { name: "新規リードナーチャリング", description: "新規リード向け3ステップナーチャリング", status: "active", createdById: adminUser.id },
+  });
+  await Promise.all([
+    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "email", label: "ウェルカムメール送信", config: { delay: 0 } as object, positionX: 100, positionY: 50 } }),
+    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "wait", label: "3日待機", config: { days: 3 } as object, positionX: 100, positionY: 150 } }),
+    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "email", label: "製品紹介メール送信", config: { delay: 3 } as object, positionX: 100, positionY: 250 } }),
+  ]);
+
+  // ===================== Leads (120) =====================
   const leadStatuses = ["NEW", "WORKING", "NURTURING", "CONVERTED", "DISQUALIFIED"];
   const leadRatings = ["HOT", "WARM", "COLD"];
   const leadSources = ["Web", "Email", "Phone", "Event", "Partner", "Referral", "SNS"];
-  const industries = ["IT", "製造", "金融", "小売", "医療", "教育", "不動産", "物流", "サービス", "建設"];
-  const firstNames = ["太郎", "花子", "一郎", "愛", "健太", "さくら", "翔", "美咲", "大輔", "由美"];
-  const lastNames = ["田中", "鈴木", "佐藤", "高橋", "山本", "伊藤", "渡辺", "加藤", "吉田", "山田", "中村", "小林"];
+  const leadIndustries = ["IT", "製造", "金融", "小売", "医療", "教育", "不動産", "物流", "サービス", "建設"];
+  const leadFirstNames = ["太郎", "花子", "一郎", "愛", "健太", "さくら", "翔", "美咲", "大輔", "由美"];
+  const leadLastNames = ["田中", "鈴木", "佐藤", "高橋", "山本", "伊藤", "渡辺", "加藤", "吉田", "山田", "中村", "小林"];
 
   const seedLeads = [];
   for (let i = 0; i < 120; i++) {
-    const fn = firstNames[i % firstNames.length];
-    const ln = lastNames[i % lastNames.length];
-    const status = leadStatuses[i % leadStatuses.length];
+    const fn = leadFirstNames[i % leadFirstNames.length];
+    const ln = leadLastNames[i % leadLastNames.length];
     seedLeads.push(
       prisma.lead.create({
         data: {
@@ -1261,14 +1309,14 @@ async function main() {
           lastName: ln,
           fullName: `${ln} ${fn}`,
           email: `lead${i + 1}@example${(i % 10) + 1}.com`,
-          phone: `03-${String(i + 1000).padStart(4, "0")}-${String(i * 7 % 9999).padStart(4, "0")}`,
+          phone: `03-${String(i + 1000).padStart(4, "0")}-${String((i * 7) % 9999).padStart(4, "0")}`,
           companyName: `株式会社サンプル${i + 1}`,
           title: ["部長", "課長", "主任", "担当", "マネージャー", "ディレクター"][i % 6],
-          industry: industries[i % industries.length],
+          industry: leadIndustries[i % leadIndustries.length],
           source: leadSources[i % leadSources.length],
-          status,
+          status: leadStatuses[i % leadStatuses.length],
           rating: leadRatings[i % leadRatings.length],
-          score: Math.floor(Math.random() * 100),
+          score: randomBetween(0, 100),
           ownerId: adminUser.id,
         },
       })
@@ -1276,24 +1324,24 @@ async function main() {
   }
   await Promise.all(seedLeads);
 
-  // Campaigns (20 records)
+  // ===================== Campaigns (20) =====================
   const campaignTypes = ["Email", "Event", "Webinar", "Content", "SNS", "Paid"];
   const campaignStatuses = ["Planning", "Active", "Completed", "Aborted"];
   const seedCampaigns = [];
   for (let i = 0; i < 20; i++) {
-    const startDate = new Date(2026, (i % 12), 1);
-    const endDate = new Date(2026, (i % 12), 28);
+    const startDate = new Date(2026, i % 12, 1);
+    const endDate = new Date(2026, i % 12, 28);
     seedCampaigns.push(
       prisma.campaign.create({
         data: {
-          name: `${["春の大商談フェア", "製品ローンチキャンペーン", "ウェビナーシリーズ", "パートナー紹介プログラム", "SNSキャンペーン"][i % 5]} ${2026 - Math.floor(i / 5)}Q${(i % 4) + 1}`,
+          name: `${["春の大商談フェア", "製品ローンチキャンペーン", "ウェビナーシリーズ", "パートナー紹介プログラム", "SNSキャンペーン"][i % 5]} 2026Q${(i % 4) + 1}`,
           type: campaignTypes[i % campaignTypes.length],
           status: campaignStatuses[i % campaignStatuses.length],
           description: `${campaignTypes[i % campaignTypes.length]}を活用した見込み客獲得施策`,
           startDate,
           endDate,
-          budget: (i + 1) * 500000,
-          actualCost: i < 10 ? (i + 1) * 350000 : null,
+          budget: (i + 1) * 500_000,
+          actualCost: i < 10 ? (i + 1) * 350_000 : null,
           isActive: i % campaignStatuses.length === 1,
           ownerId: adminUser.id,
         },
@@ -1302,7 +1350,7 @@ async function main() {
   }
   await Promise.all(seedCampaigns);
 
-  // Products (30 records) + Standard PriceBook
+  // ===================== Products (30) + PriceBooks =====================
   const productFamilies = ["クラウド", "オンプレ", "サービス", "ライセンス", "サポート"];
   const createdProducts = [];
   for (let i = 0; i < 30; i++) {
@@ -1319,93 +1367,173 @@ async function main() {
     );
   }
 
-  const standardPB = await prisma.priceBook.create({
-    data: { name: "標準価格表", isStandard: true, isActive: true },
-  });
-  const premiumPB = await prisma.priceBook.create({
-    data: { name: "プレミアム価格表", isStandard: false, isActive: true },
-  });
+  const standardPB = await prisma.priceBook.create({ data: { name: "標準価格表", isStandard: true, isActive: true } });
+  const premiumPB = await prisma.priceBook.create({ data: { name: "プレミアム価格表", isStandard: false, isActive: true } });
 
   for (let i = 0; i < createdProducts.length; i++) {
-    await prisma.priceBookEntry.create({
+    await prisma.priceBookEntry.create({ data: { priceBookId: standardPB.id, productId: createdProducts[i].id, unitPrice: (i + 1) * 50_000, isActive: i < 25 } });
+    if (i < 15) {
+      await prisma.priceBookEntry.create({ data: { priceBookId: premiumPB.id, productId: createdProducts[i].id, unitPrice: (i + 1) * 70_000, isActive: true } });
+    }
+  }
+  void premiumPB;
+
+  // ===================== Account 360 Data =====================
+  console.log("🏢 Account 360 データを更新中...");
+
+  const account360Industries = ["製造業", "IT・ソフトウェア", "金融・保険", "商社・流通", "不動産", "医療・ヘルスケア", "教育", "小売・EC", "建設", "コンサルティング"];
+  for (let i = 0; i < companies.length; i++) {
+    const company = companies[i];
+    await prisma.company.update({
+      where: { id: company.id },
       data: {
-        priceBookId: standardPB.id,
-        productId: createdProducts[i].id,
-        unitPrice: (i + 1) * 50000,
-        isActive: i < 25,
+        businessSummary: `${company.companyName}は${account360Industries[i % account360Industries.length]}業界のリーディングカンパニーです。`,
       },
     });
-    if (i < 15) {
-      await prisma.priceBookEntry.create({
+  }
+
+  // AccountTeamMember
+  const teamRoles = ["OWNER", "ACCOUNT_MANAGER", "CSM", "SALES_REP", "EXECUTIVE_SPONSOR"];
+  const allSalesAndManagers = [sales1, sales2, sales3, sales4, sales5, sales6, manager1, manager2];
+  for (let i = 0; i < Math.min(companies.length, 40); i++) {
+    const company = companies[i];
+    const numMembers = randomBetween(1, 3);
+    const chosen = pickN(allSalesAndManagers, numMembers);
+    for (let j = 0; j < chosen.length; j++) {
+      await prisma.accountTeamMember.upsert({
+        where: { companyId_userId: { companyId: company.id, userId: chosen[j].id } },
+        create: { companyId: company.id, userId: chosen[j].id, role: teamRoles[j % teamRoles.length], isPrimary: j === 0 },
+        update: {},
+      });
+    }
+  }
+
+  // AccountInsight
+  const insightTemplates = [
+    { type: "RISK", title: "30日以上活動がありません", body: "最後の活動から30日以上が経過しています。早急にコンタクトを取ることをお勧めします。", severity: "HIGH", source: "SYSTEM", actionLabel: "活動を記録", actionUrl: "/activities/new" },
+    { type: "OPPORTUNITY", title: "高スコアリードが存在します", body: "スコア70以上のリードが複数あります。商談に転換するチャンスです。", severity: "MEDIUM", source: "MA", actionLabel: null, actionUrl: null },
+    { type: "RENEWAL", title: "契約更新予定日が近づいています", body: "契約の更新期限まで60日を切っています。更新提案の準備を開始してください。", severity: "HIGH", source: "CRM", actionLabel: "契約を確認", actionUrl: null },
+    { type: "SUPPORT", title: "未解決のケースがあります", body: "優先度「高」以上の未解決ケースが存在します。サポートチームと連携してください。", severity: "MEDIUM", source: "CRM", actionLabel: null, actionUrl: null },
+    { type: "ENGAGEMENT", title: "キャンペーン反応後に商談化していません", body: "最近のキャンペーンに反応しましたが、商談が作成されていません。", severity: "LOW", source: "MA", actionLabel: "商談を作成", actionUrl: null },
+  ];
+
+  for (let i = 0; i < Math.min(companies.length, 30); i++) {
+    const company = companies[i];
+    const count = randomBetween(1, 3);
+    for (let j = 0; j < count; j++) {
+      const template = insightTemplates[(i + j) % insightTemplates.length];
+      await prisma.accountInsight.create({
         data: {
-          priceBookId: premiumPB.id,
-          productId: createdProducts[i].id,
-          unitPrice: (i + 1) * 70000,
-          isActive: true,
+          companyId: company.id,
+          type: template.type,
+          title: template.title,
+          body: template.body,
+          severity: template.severity,
+          source: template.source,
+          actionLabel: template.actionLabel,
+          actionUrl: template.actionUrl,
+          isDismissed: false,
         },
       });
     }
   }
 
-  // Cases (80 records) — link to existing companies
-  const caseSubjects = [
-    "ログインできない", "データが同期しない", "レポートが表示されない",
-    "インポートエラーが発生する", "メール送信が失敗する", "APIが応答しない",
-    "パフォーマンスが遅い", "設定変更が反映されない",
-  ];
-  const caseStatuses = ["New", "Open", "Pending Customer", "Closed"];
-  const casePriorities = ["Critical", "High", "Medium", "Low"];
-  const caseTypes = ["Question", "Bug", "Feature Request", "Other"];
+  // AccountHealthSnapshot
+  for (const company of companies.slice(0, 40)) {
+    const baseScore = randomBetween(35, 85);
+    for (let month = 0; month < 6; month++) {
+      const score = Math.min(100, Math.max(0, baseScore + randomBetween(-10, 10)));
+      const measuredAt = new Date("2026-05-16");
+      measuredAt.setMonth(measuredAt.getMonth() - month);
+      await prisma.accountHealthSnapshot.create({
+        data: {
+          companyId: company.id,
+          healthScore: score,
+          fitScore: randomBetween(60, 100),
+          engagementScore: randomBetween(20, 80),
+          riskLevel: score >= 70 ? "LOW" : score >= 50 ? "MEDIUM" : score >= 30 ? "HIGH" : "CRITICAL",
+          reason: { factors: ["activity_score", "deal_velocity", "support_satisfaction"] },
+          measuredAt,
+        },
+      });
+    }
+    await prisma.company.update({ where: { id: company.id }, data: { healthScore: baseScore } });
+  }
 
-  const caseCompanies = await prisma.company.findMany({ take: 20 });
-  for (let i = 0; i < 80; i++) {
-    const company = caseCompanies[i % caseCompanies.length];
-    await prisma.case.create({
+  // AccountPlan
+  for (const company of companies.slice(0, 15)) {
+    await prisma.accountPlan.create({
       data: {
-        subject: `${caseSubjects[i % caseSubjects.length]} (${i + 1})`,
-        description: "詳細な説明文がここに入ります。再現手順を記載してください。",
-        status: caseStatuses[i % caseStatuses.length],
-        priority: casePriorities[i % casePriorities.length],
-        type: caseTypes[i % caseTypes.length],
-        origin: ["Email", "Phone", "Web", "Chat"][i % 4],
         companyId: company.id,
-        ownerId: adminUser.id,
-        resolvedAt: i % 4 === 3 ? new Date() : null,
-        resolution: i % 4 === 3 ? "設定を修正して解決しました。" : null,
+        name: "2026年度 アカウントプラン",
+        fiscalYear: "2026",
+        status: "ACTIVE",
+        summary: `${company.companyName}との関係強化と収益拡大を目指す年度計画です。`,
+        businessObjectives: ["ARR20%向上", "プロダクト導入範囲拡大", "C-Level関係の強化"],
+        keyInitiatives: ["四半期レビュー実施", "エグゼクティブスポンサー設定", "カスタマーサクセス強化"],
+        risks: ["競合他社の提案", "予算削減リスク", "担当者変更"],
+        expansionOpportunities: ["追加モジュール導入", "部門展開", "グループ展開"],
+        nextActions: ["来月のQBR設定", "CSMとのキックオフ", "更新提案書作成"],
+        ownerId: null,
       },
     });
   }
 
-  // Grading Profile
-  await prisma.gradingProfile.create({
-    data: {
-      name: "標準グレーディング",
-      description: "業種・役職・会社規模に基づくグレード判定",
-      criteria: [
-        { field: "jobTitle", contains: "CEO", gradeBoost: 2 },
-        { field: "jobTitle", contains: "部長", gradeBoost: 1 },
-        { field: "industry", value: "IT", gradeBoost: 1 },
-      ] as object[],
+  // AccountRelationship
+  if (companies.length >= 3) {
+    await prisma.accountRelationship.createMany({
+      data: [
+        { sourceCompanyId: companies[0].id, targetCompanyId: companies[1].id, relationshipType: "SUBSIDIARY", description: "子会社" },
+        { sourceCompanyId: companies[0].id, targetCompanyId: companies[2].id, relationshipType: "PARTNER", description: "パートナー企業" },
+        { sourceCompanyId: companies[3].id, targetCompanyId: companies[4].id, relationshipType: "COMPETITOR", description: "競合企業" },
+      ],
+      skipDuplicates: true,
+    });
+  }
+
+  // RecordPageDefinition
+  const companyPage = await prisma.recordPageDefinition.upsert({
+    where: { objectApiName_apiName: { objectApiName: "Company", apiName: "company_360_default" } },
+    create: {
+      objectApiName: "Company",
+      apiName: "company_360_default",
+      label: "取引先360",
+      description: "取引先の全情報を一画面で確認できる標準ページ",
+      pageType: "RECORD_PAGE",
+      template: "TABS_WITH_RIGHT_SIDEBAR",
+      status: "ACTIVE",
       isDefault: true,
+      layout: {},
     },
+    update: {},
   });
 
-  // Engagement Program
-  const program = await prisma.engagementProgram.create({
-    data: {
-      name: "新規リードナーチャリング",
-      description: "新規リード向けの3ステップナーチャリングプログラム",
-      status: "active",
-      createdById: adminUser.id,
-    },
-  });
-  await Promise.all([
-    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "email", label: "ウェルカムメール送信", config: { delay: 0 } as object, positionX: 100, positionY: 50 } }),
-    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "wait", label: "3日待機", config: { days: 3 } as object, positionX: 100, positionY: 150 } }),
-    prisma.engagementProgramNode.create({ data: { programId: program.id, type: "email", label: "製品紹介メール送信", config: { delay: 3 } as object, positionX: 100, positionY: 250 } }),
-  ]);
+  const defaultComponents = [
+    { componentType: "RECORD_HEADER", region: "header", sortOrder: 0, config: {} },
+    { componentType: "HIGHLIGHT_PANEL", region: "header", sortOrder: 1, config: {} },
+    { componentType: "FIELD_SECTION", region: "tab:overview", sortOrder: 0, config: { title: "企業概要", columns: 2 } },
+    { componentType: "RELATED_LIST", region: "tab:overview", sortOrder: 1, config: { title: "進行中商談", relatedObject: "deals", maxRows: 5 } },
+    { componentType: "RELATED_LIST", region: "tab:overview", sortOrder: 2, config: { title: "担当者", relatedObject: "contacts", maxRows: 5 } },
+    { componentType: "FIELD_SECTION", region: "tab:details", sortOrder: 0, config: { title: "基本情報", columns: 2 } },
+    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 0, config: { title: "担当者", relatedObject: "contacts", maxRows: 10 } },
+    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 1, config: { title: "商談", relatedObject: "deals", maxRows: 10 } },
+    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 2, config: { title: "ケース", relatedObject: "cases", maxRows: 10 } },
+    { componentType: "ACTIVITY_TIMELINE", region: "tab:activity", sortOrder: 0, config: {} },
+    { componentType: "ACCOUNT_HEALTH", region: "sidebar", sortOrder: 0, config: {} },
+    { componentType: "ACCOUNT_TEAM", region: "sidebar", sortOrder: 1, config: {} },
+    { componentType: "TASK_LIST", region: "sidebar", sortOrder: 2, config: { title: "次のタスク", maxRows: 3 } },
+    { componentType: "INSIGHT_CARD", region: "sidebar", sortOrder: 3, config: {} },
+  ];
 
-  // ===================== Standard ObjectDefinitions =====================
+  for (const comp of defaultComponents) {
+    await prisma.pageComponentInstance.create({ data: { recordPageId: companyPage.id, ...comp } });
+  }
+
+  await prisma.recordPageAssignment.create({
+    data: { recordPageId: companyPage.id, objectApiName: "Company", formFactor: "BOTH", priority: 0, isActive: true },
+  });
+
+  // ===================== ObjectDefinitions =====================
   console.log("📦 標準オブジェクト定義を登録中...");
 
   const standardObjects = [
@@ -1431,42 +1559,11 @@ async function main() {
   for (const obj of standardObjects) {
     await prisma.objectDefinition.upsert({
       where: { apiName: obj.apiName },
-      update: {
-        label: obj.label,
-        pluralLabel: obj.pluralLabel,
-        category: obj.category,
-        description: obj.description,
-        objectType: "STANDARD",
-        isActive: true,
-        isSearchable: true,
-        isReportable: true,
-        isAuditable: true,
-        enableActivities: obj.enableActivities,
-        enableNotes: obj.enableNotes,
-        enableFiles: obj.enableFiles,
-        enableHistory: obj.enableHistory,
-      },
-      create: {
-        apiName: obj.apiName,
-        label: obj.label,
-        pluralLabel: obj.pluralLabel,
-        category: obj.category,
-        description: obj.description,
-        objectType: "STANDARD",
-        isActive: true,
-        isSearchable: true,
-        isReportable: true,
-        isAuditable: true,
-        enableActivities: obj.enableActivities,
-        enableNotes: obj.enableNotes,
-        enableFiles: obj.enableFiles,
-        enableHistory: obj.enableHistory,
-        createdById: adminUser.id,
-      },
+      update: { label: obj.label, pluralLabel: obj.pluralLabel, category: obj.category, description: obj.description, objectType: "STANDARD", isActive: true, isSearchable: true, isReportable: true, isAuditable: true, enableActivities: obj.enableActivities, enableNotes: obj.enableNotes, enableFiles: obj.enableFiles, enableHistory: obj.enableHistory },
+      create: { apiName: obj.apiName, label: obj.label, pluralLabel: obj.pluralLabel, category: obj.category, description: obj.description, objectType: "STANDARD", isActive: true, isSearchable: true, isReportable: true, isAuditable: true, enableActivities: obj.enableActivities, enableNotes: obj.enableNotes, enableFiles: obj.enableFiles, enableHistory: obj.enableHistory, createdById: adminUser.id },
     });
   }
 
-  // Lead FieldDefinitions
   const leadObjDef = await prisma.objectDefinition.findUnique({ where: { apiName: "Lead" } });
   if (leadObjDef) {
     const leadFields = [
@@ -1475,241 +1572,57 @@ async function main() {
       { apiName: "companyName", label: "会社名", fieldType: "TEXT", isRequired: false, sortOrder: 3 },
       { apiName: "title", label: "役職", fieldType: "TEXT", isRequired: false, sortOrder: 4 },
       { apiName: "phone", label: "電話番号", fieldType: "PHONE", isRequired: false, sortOrder: 5 },
-      { apiName: "status", label: "ステータス", fieldType: "PICKLIST", isRequired: true, sortOrder: 6, options: { values: ["NEW", "WORKING", "NURTURING", "MQL", "SQL", "QUALIFIED", "CONVERTED", "UNSUBSCRIBED"] } },
-      { apiName: "lifecycleStage", label: "ライフサイクルステージ", fieldType: "PICKLIST", isRequired: false, sortOrder: 7, options: { values: ["VISITOR", "LEAD", "MQL", "SQL", "OPPORTUNITY", "CUSTOMER"] } },
-      { apiName: "rating", label: "評価", fieldType: "PICKLIST", isRequired: false, sortOrder: 8, options: { values: ["HOT", "WARM", "COLD"] } },
-      { apiName: "score", label: "スコア", fieldType: "NUMBER", isRequired: false, sortOrder: 9 },
-      { apiName: "grade", label: "グレード", fieldType: "TEXT", isRequired: false, sortOrder: 10 },
-      { apiName: "consentStatus", label: "同意状態", fieldType: "PICKLIST", isRequired: false, sortOrder: 11, options: { values: ["UNKNOWN", "OPTED_IN", "OPTED_OUT"] } },
-      { apiName: "doNotEmail", label: "メール配信停止", fieldType: "BOOLEAN", isRequired: false, sortOrder: 12 },
-      { apiName: "optedOut", label: "オプトアウト", fieldType: "BOOLEAN", isRequired: false, sortOrder: 13 },
-      { apiName: "emailBounced", label: "メールバウンス", fieldType: "BOOLEAN", isRequired: false, sortOrder: 14 },
-      { apiName: "source", label: "参照元", fieldType: "TEXT", isRequired: false, sortOrder: 15 },
-      { apiName: "industry", label: "業種", fieldType: "TEXT", isRequired: false, sortOrder: 16 },
-      { apiName: "website", label: "ウェブサイト", fieldType: "URL", isRequired: false, sortOrder: 17 },
-      { apiName: "assignedUserId", label: "担当者", fieldType: "LOOKUP", isRequired: false, sortOrder: 18 },
-      { apiName: "ownerId", label: "所有者", fieldType: "LOOKUP", isRequired: false, sortOrder: 19 },
-      { apiName: "crmContactId", label: "CRM担当者", fieldType: "LOOKUP", isRequired: false, sortOrder: 20 },
-      { apiName: "convertedAt", label: "変換日時", fieldType: "DATETIME", isRequired: false, sortOrder: 21 },
-      { apiName: "lastActivityAt", label: "最終活動日時", fieldType: "DATETIME", isRequired: false, sortOrder: 22 },
+      { apiName: "status", label: "ステータス", fieldType: "PICKLIST", isRequired: true, sortOrder: 6, options: { values: ["NEW", "WORKING", "NURTURING", "CONVERTED", "DISQUALIFIED"] } },
+      { apiName: "rating", label: "評価", fieldType: "PICKLIST", isRequired: false, sortOrder: 7, options: { values: ["HOT", "WARM", "COLD"] } },
+      { apiName: "score", label: "スコア", fieldType: "NUMBER", isRequired: false, sortOrder: 8 },
+      { apiName: "source", label: "参照元", fieldType: "TEXT", isRequired: false, sortOrder: 9 },
+      { apiName: "ownerId", label: "所有者", fieldType: "LOOKUP", isRequired: false, sortOrder: 10 },
     ];
 
     for (const field of leadFields) {
       await prisma.fieldDefinition.upsert({
         where: { objectDefinitionId_apiName: { objectDefinitionId: leadObjDef.id, apiName: field.apiName } },
-        update: { label: field.label, fieldType: field.fieldType, isRequired: field.isRequired, isSystem: true, sortOrder: field.sortOrder, options: (field as any).options ?? undefined },
-        create: {
-          objectDefinitionId: leadObjDef.id,
-          apiName: field.apiName,
-          label: field.label,
-          fieldType: field.fieldType,
-          isRequired: field.isRequired,
-          isSystem: true,
-          sortOrder: field.sortOrder,
-          options: (field as any).options ?? undefined,
-        },
+        update: { label: field.label, fieldType: field.fieldType, isRequired: field.isRequired, isSystem: true, sortOrder: field.sortOrder, options: (field as { options?: object }).options ?? undefined },
+        create: { objectDefinitionId: leadObjDef.id, apiName: field.apiName, label: field.label, fieldType: field.fieldType, isRequired: field.isRequired, isSystem: true, sortOrder: field.sortOrder, options: (field as { options?: object }).options ?? undefined },
       });
     }
   }
 
-  // ===================== Account 360 Seed Data =====================
-  console.log("🏢 Account 360 シードデータを投入中...");
+  // ===================== Final Summary =====================
+  const [
+    totalUsers,
+    totalCompanies,
+    totalContacts,
+    totalDeals,
+    totalActivities,
+    totalTasks,
+    totalCases,
+    totalReports,
+    totalDashboards,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.company.count(),
+    prisma.contact.count(),
+    prisma.deal.count(),
+    prisma.activity.count(),
+    prisma.task.count(),
+    prisma.case.count(),
+    prisma.report.count(),
+    prisma.dashboard.count(),
+  ]);
 
-  // Update companies with rich Account 360 fields
-  const account360Industries = ["製造業", "IT・ソフトウェア", "金融・保険", "商社・流通", "不動産", "医療・ヘルスケア", "教育", "小売・EC", "建設", "コンサルティング"];
-  const tiers = ["STRATEGIC", "ENTERPRISE", "MID_MARKET", "SMB"];
-  const lifecycleStages = ["TARGET", "LEAD", "OPPORTUNITY", "CUSTOMER", "EXPANSION"];
-
-  for (let i = 0; i < companies.length; i++) {
-    const company = companies[i];
-    const tier = tiers[i % tiers.length];
-    const arr = tier === "STRATEGIC" ? Math.floor(Math.random() * 50000000) + 10000000
-      : tier === "ENTERPRISE" ? Math.floor(Math.random() * 10000000) + 1000000
-      : tier === "MID_MARKET" ? Math.floor(Math.random() * 1000000) + 100000
-      : Math.floor(Math.random() * 100000) + 10000;
-
-    await prisma.company.update({
-      where: { id: company.id },
-      data: {
-        tier,
-        lifecycleStage: lifecycleStages[i % lifecycleStages.length],
-        domain: `company${i}.co.jp`,
-        businessSummary: `${company.companyName}は${account360Industries[i % account360Industries.length]}業界のリーディングカンパニーです。`,
-        painPoints: ["コスト削減", "業務効率化", "デジタル変革"],
-        objectives: ["売上20%向上", "コスト10%削減", "顧客満足度向上"],
-        technologies: ["Salesforce", "AWS", "Slack"],
-        arr: arr,
-        mrr: Math.floor(arr / 12),
-        renewalDate: new Date(Date.now() + Math.random() * 365 * 24 * 60 * 60 * 1000),
-        openPipelineAmount: Math.floor(Math.random() * 5000000),
-        wonAmount: Math.floor(Math.random() * 10000000),
-      },
-    });
-  }
-
-  // AccountTeamMember seed
-  const teamRoles = ["OWNER", "ACCOUNT_MANAGER", "CSM", "SALES_REP", "EXECUTIVE_SPONSOR"];
-  for (let i = 0; i < Math.min(companies.length, 20); i++) {
-    const company = companies[i];
-    const numMembers = Math.floor(Math.random() * 3) + 1;
-    for (let j = 0; j < numMembers; j++) {
-      const userIndex = (i + j) % users.length;
-      await prisma.accountTeamMember.upsert({
-        where: { companyId_userId: { companyId: company.id, userId: users[userIndex].id } },
-        create: {
-          companyId: company.id,
-          userId: users[userIndex].id,
-          role: teamRoles[j % teamRoles.length],
-          isPrimary: j === 0,
-        },
-        update: {},
-      });
-    }
-  }
-
-  // AccountInsight seed
-  const insightTemplates = [
-    { type: "RISK", title: "30日以上活動がありません", body: "最後の活動から30日以上が経過しています。早急にコンタクトを取ることをお勧めします。", severity: "HIGH", source: "SYSTEM", actionLabel: "活動を記録", actionUrl: "/activities/new" },
-    { type: "OPPORTUNITY", title: "高スコアリードが存在します", body: "スコア70以上のリードが複数あります。商談に転換するチャンスです。", severity: "MEDIUM", source: "MA", actionLabel: undefined, actionUrl: undefined },
-    { type: "RENEWAL", title: "契約更新予定日が近づいています", body: "契約の更新期限まで60日を切っています。更新提案の準備を開始してください。", severity: "HIGH", source: "CRM", actionLabel: "契約を確認", actionUrl: undefined },
-    { type: "SUPPORT", title: "未解決のケースがあります", body: "優先度「高」以上の未解決ケースが存在します。サポートチームと連携してください。", severity: "MEDIUM", source: "CRM", actionLabel: undefined, actionUrl: undefined },
-    { type: "ENGAGEMENT", title: "キャンペーン反応後に商談化していません", body: "最近のキャンペーンに反応しましたが、商談が作成されていません。", severity: "LOW", source: "MA", actionLabel: "商談を作成", actionUrl: undefined },
-    { type: "DATA_QUALITY", title: "担当者情報が不足しています", body: "主担当者のメールアドレスまたは電話番号が未入力です。", severity: "LOW", source: "SYSTEM", actionLabel: undefined, actionUrl: undefined },
-  ];
-
-  for (let i = 0; i < Math.min(companies.length, 15); i++) {
-    const company = companies[i];
-    const count = Math.floor(Math.random() * 3) + 2;
-    for (let j = 0; j < count; j++) {
-      const template = insightTemplates[j % insightTemplates.length];
-      await prisma.accountInsight.create({
-        data: {
-          companyId: company.id,
-          type: template.type,
-          title: template.title,
-          body: template.body,
-          severity: template.severity,
-          source: template.source,
-          actionLabel: template.actionLabel ?? null,
-          actionUrl: template.actionUrl ?? null,
-          isDismissed: false,
-        },
-      });
-    }
-  }
-
-  // AccountHealthSnapshot seed
-  for (const company of companies.slice(0, 20)) {
-    const baseScore = Math.floor(Math.random() * 60) + 30;
-    for (let month = 0; month < 6; month++) {
-      const score = Math.min(100, Math.max(0, baseScore + Math.floor(Math.random() * 20) - 10));
-      const measuredAt = new Date();
-      measuredAt.setMonth(measuredAt.getMonth() - month);
-      await prisma.accountHealthSnapshot.create({
-        data: {
-          companyId: company.id,
-          healthScore: score,
-          fitScore: Math.floor(Math.random() * 40) + 60,
-          engagementScore: Math.floor(Math.random() * 60) + 20,
-          riskLevel: score >= 70 ? "LOW" : score >= 50 ? "MEDIUM" : score >= 30 ? "HIGH" : "CRITICAL",
-          reason: { factors: ["activity_score", "deal_velocity", "support_satisfaction"] },
-          measuredAt,
-        },
-      });
-    }
-    // Update company healthScore
-    await prisma.company.update({
-      where: { id: company.id },
-      data: { healthScore: baseScore },
-    });
-  }
-
-  // AccountPlan seed
-  const currentYear = new Date().getFullYear();
-  for (const company of companies.slice(0, 8)) {
-    await prisma.accountPlan.create({
-      data: {
-        companyId: company.id,
-        name: `${currentYear}年度 アカウントプラン`,
-        fiscalYear: String(currentYear),
-        status: "ACTIVE",
-        summary: `${company.companyName}との関係強化と収益拡大を目指す年度計画です。`,
-        businessObjectives: ["ARR20%向上", "プロダクト導入範囲拡大", "C-Level関係の強化"],
-        keyInitiatives: ["四半期レビュー実施", "エグゼクティブスポンサー設定", "カスタマーサクセス強化"],
-        risks: ["競合他社の提案", "予算削減リスク", "担当者変更"],
-        expansionOpportunities: ["追加モジュール導入", "部門展開", "グループ展開"],
-        nextActions: ["来月のQBR設定", "CSMとのキックオフ", "更新提案書作成"],
-        ownerId: null,
-      },
-    });
-  }
-
-  // AccountRelationship seed
-  if (companies.length >= 3) {
-    await prisma.accountRelationship.createMany({
-      data: [
-        { sourceCompanyId: companies[0].id, targetCompanyId: companies[1].id, relationshipType: "SUBSIDIARY", description: "子会社" },
-        { sourceCompanyId: companies[0].id, targetCompanyId: companies[2].id, relationshipType: "PARTNER", description: "パートナー企業" },
-      ],
-      skipDuplicates: true,
-    });
-  }
-
-  // RecordPageDefinition seed
-  const companyPage = await prisma.recordPageDefinition.upsert({
-    where: { objectApiName_apiName: { objectApiName: "Company", apiName: "company_360_default" } },
-    create: {
-      objectApiName: "Company",
-      apiName: "company_360_default",
-      label: "取引先360",
-      description: "取引先の全情報を一画面で確認できる標準ページ",
-      pageType: "RECORD_PAGE",
-      template: "TABS_WITH_RIGHT_SIDEBAR",
-      status: "ACTIVE",
-      isDefault: true,
-      layout: {},
-    },
-    update: {},
-  });
-
-  // Add default components to the Company page
-  const defaultComponents = [
-    { componentType: "RECORD_HEADER", region: "header", sortOrder: 0, config: {} },
-    { componentType: "HIGHLIGHT_PANEL", region: "header", sortOrder: 1, config: {} },
-    { componentType: "FIELD_SECTION", region: "tab:overview", sortOrder: 0, config: { title: "企業概要", columns: 2 } },
-    { componentType: "RELATED_LIST", region: "tab:overview", sortOrder: 1, config: { title: "進行中商談", relatedObject: "deals", maxRows: 5 } },
-    { componentType: "RELATED_LIST", region: "tab:overview", sortOrder: 2, config: { title: "担当者", relatedObject: "contacts", maxRows: 5 } },
-    { componentType: "FIELD_SECTION", region: "tab:details", sortOrder: 0, config: { title: "基本情報", columns: 2 } },
-    { componentType: "FIELD_SECTION", region: "tab:details", sortOrder: 1, config: { title: "企業属性", columns: 2 } },
-    { componentType: "FIELD_SECTION", region: "tab:details", sortOrder: 2, config: { title: "所在地", columns: 1 } },
-    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 0, config: { title: "担当者", relatedObject: "contacts", maxRows: 10 } },
-    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 1, config: { title: "商談", relatedObject: "deals", maxRows: 10 } },
-    { componentType: "RELATED_LIST", region: "tab:related", sortOrder: 2, config: { title: "ケース", relatedObject: "cases", maxRows: 10 } },
-    { componentType: "ACTIVITY_TIMELINE", region: "tab:activity", sortOrder: 0, config: {} },
-    { componentType: "ACCOUNT_HEALTH", region: "sidebar", sortOrder: 0, config: {} },
-    { componentType: "ACCOUNT_TEAM", region: "sidebar", sortOrder: 1, config: {} },
-    { componentType: "TASK_LIST", region: "sidebar", sortOrder: 2, config: { title: "次のタスク", maxRows: 3 } },
-    { componentType: "INSIGHT_CARD", region: "sidebar", sortOrder: 3, config: {} },
-  ];
-
-  for (const comp of defaultComponents) {
-    await prisma.pageComponentInstance.create({
-      data: { recordPageId: companyPage.id, ...comp },
-    });
-  }
-
-  // Create a default assignment for the Company page
-  await prisma.recordPageAssignment.create({
-    data: {
-      recordPageId: companyPage.id,
-      objectApiName: "Company",
-      formFactor: "BOTH",
-      priority: 0,
-      isActive: true,
-    },
-  });
-
-  console.log("✅ シードデータの投入が完了しました");
+  console.log("\n✅ シードデータの投入が完了しました！");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log(`👤 ユーザー: ${totalUsers}`);
+  console.log(`🏢 企業: ${totalCompanies}`);
+  console.log(`👥 コンタクト: ${totalContacts}`);
+  console.log(`💼 商談: ${totalDeals}`);
+  console.log(`📋 活動: ${totalActivities}`);
+  console.log(`✅ タスク: ${totalTasks}`);
+  console.log(`📁 ケース: ${totalCases}`);
+  console.log(`📊 レポート: ${totalReports}`);
+  console.log(`📈 ダッシュボード: ${totalDashboards}`);
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 
 main()

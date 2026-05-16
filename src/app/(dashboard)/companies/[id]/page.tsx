@@ -64,14 +64,33 @@ interface Company {
   parentCompany?: { id: string; companyName: string };
   childCompanies?: { id: string; companyName: string; tier?: string; status?: string }[];
   contacts: { id: string; fullName: string; email?: string; role?: string; isPrimary?: boolean }[];
-  deals: { id: string; name: string; stage: string; amount?: number; closeDate?: string; probability?: number }[];
-  tasks: { id: string; title: string; status: string; dueDate?: string; priority?: string }[];
+  deals: {
+    id: string; dealName: string; name?: string; stage: string; amount?: number;
+    closeDate?: string; expectedCloseDate?: string; probability?: number;
+    lastActivityAt?: string; nextAction?: string; riskLevel?: string;
+    activityCount?: number; meetingCount?: number;
+    owner?: { id: string; name: string | null; department?: string | null } | null;
+    salesRep?: { id: string; name: string | null } | null;
+  }[];
+  tasks: {
+    id: string; title: string; status: string; dueDate?: string; priority?: string;
+    assignee?: { id: string; name: string | null } | null;
+  }[];
   cases: { id: string; caseNumber: string; subject: string; status: string; priority: string; createdAt: string }[];
   campaigns: { id: string; name: string; status: string; type?: string }[];
   contracts: { id: string; contractNumber?: string; status: string; startDate?: string; endDate?: string; value?: number }[];
   orders: { id: string; orderNumber?: string; status: string; totalAmount?: number }[];
-  activities: { id: string; type: string; subject?: string; body?: string; createdAt: string }[];
-  accountTeamMembers: { id: string; role: string; isPrimary: boolean; user: { id: string; name: string; email: string; department?: string } }[];
+  activities: {
+    id: string; type: string; subject?: string; body?: string; activityDate?: string; createdAt: string;
+    outcome?: string | null; durationMinutes?: number | null; nextAction?: string | null; nextActionDueDate?: string | null;
+    owner?: { id: string; name: string | null } | null;
+    contact?: { id: string; fullName: string } | null;
+    deal?: { id: string; dealName: string } | null;
+  }[];
+  accountTeamMembers: {
+    id: string; role: string; isPrimary: boolean;
+    user: { id: string; name: string | null; email: string; department?: string | null; title?: string | null; phone?: string | null };
+  }[];
   accountInsights: { id: string; type: string; title: string; body: string; severity: string; source: string; actionLabel?: string; actionUrl?: string; isDismissed: boolean; createdAt: string }[];
   accountPlans: { id: string; name: string; fiscalYear: string; status: string; summary?: string }[];
   accountStakeholders: { id: string; influenceLevel: string; attitude: string; decisionRole: string; notes?: string; contact: { id: string; fullName: string; email?: string; role?: string } }[];
@@ -437,16 +456,30 @@ function OverviewTab({
         {/* Account team */}
         {(company.accountTeamMembers ?? []).length > 0 && (
           <LightningCard>
-            <LightningCardHeader title="取引先チーム" />
+            <LightningCardHeader title="取引先チーム" count={company.accountTeamMembers.length} />
             <ul className="divide-y divide-sf-border">
               {company.accountTeamMembers.map((m) => (
                 <li key={m.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <div className="w-8 h-8 rounded-full bg-sf-bg border border-sf-border flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-sf-text">{m.user.name[0]}</span>
+                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary-700">{(m.user.name ?? "?")[0]}</span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-sf-text truncate">{m.user.name}</p>
-                    <p className="text-xs text-sf-weak">{TEAM_ROLE_MAP[m.role] ?? m.role}</p>
+                    <Link
+                      href={`/users/${m.user.id}`}
+                      className="text-sm font-medium text-primary-600 hover:underline truncate block"
+                    >
+                      {m.user.name}
+                    </Link>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-sf-weak">{TEAM_ROLE_MAP[m.role] ?? m.role}</span>
+                      {m.user.title && <span className="text-xs text-sf-weak">· {m.user.title}</span>}
+                      {m.user.department && <span className="text-xs text-sf-weak">{m.user.department}</span>}
+                    </div>
+                    {m.user.email && (
+                      <a href={`mailto:${m.user.email}`} className="text-xs text-sf-weak hover:text-primary-600">
+                        {m.user.email}
+                      </a>
+                    )}
                   </div>
                   {m.isPrimary && <Badge variant="brand">主担当</Badge>}
                 </li>
@@ -505,7 +538,14 @@ function OverviewTab({
                     {a.subject && (
                       <p className="text-xs font-medium text-sf-text truncate">{a.subject}</p>
                     )}
-                    <p className="text-xs text-sf-weak">{fmtDate(a.createdAt)}</p>
+                    <div className="flex items-center gap-2 text-xs text-sf-weak">
+                      <span>{fmtDate(a.activityDate ?? a.createdAt)}</span>
+                      {a.owner && (
+                        <Link href={`/users/${a.owner.id}`} className="text-primary-600 hover:underline">
+                          {a.owner.name}
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </li>
               ))}
@@ -792,14 +832,27 @@ function RelatedTab({ company }: { company: Company }) {
 
 function ActivityTab({ company }: { company: Company }) {
   const activities = [...(company.activities ?? [])].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.activityDate ?? b.createdAt).getTime() - new Date(a.activityDate ?? a.createdAt).getTime()
   );
 
   const typeLabel: Record<string, string> = {
-    NOTE: "メモ",
-    CALL: "電話",
-    MEETING: "ミーティング",
-    EMAIL: "メール",
+    note: "メモ", NOTE: "メモ",
+    call: "電話", CALL: "電話",
+    meeting: "会議", MEETING: "会議",
+    email: "メール", EMAIL: "メール",
+    demo: "デモ", DEMO: "デモ",
+    proposal: "提案", PROPOSAL: "提案",
+    negotiation: "交渉", NEGOTIATION: "交渉",
+    follow_up: "フォロー", FOLLOW_UP: "フォロー",
+  };
+
+  const OUTCOME_CLS: Record<string, string> = {
+    POSITIVE: "text-success", NEUTRAL: "text-sf-weak", NEGATIVE: "text-danger",
+    NO_RESPONSE: "text-sf-weak", NEXT_STEP_CREATED: "text-primary-600", COMPLETED: "text-success",
+  };
+  const OUTCOME_LABEL: Record<string, string> = {
+    POSITIVE: "ポジティブ", NEUTRAL: "通常", NEGATIVE: "ネガティブ",
+    NO_RESPONSE: "応答なし", NEXT_STEP_CREATED: "次Step設定", COMPLETED: "完了",
   };
 
   return (
@@ -819,16 +872,60 @@ function ActivityTab({ company }: { company: Company }) {
             {activities.map((a) => (
               <li key={a.id} className="flex items-start gap-3 px-4 py-3">
                 <div className="w-8 h-8 rounded-full bg-sf-bg border border-sf-border flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-semibold text-sf-weak">{(typeLabel[a.type] ?? a.type)[0]}</span>
+                  <span className="text-xs font-semibold text-sf-weak">{(typeLabel[a.type] ?? a.type)[0]?.toUpperCase()}</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <Badge variant="muted">{typeLabel[a.type] ?? a.type}</Badge>
-                    <span className="text-xs text-sf-weak">{fmtDate(a.createdAt)}</span>
+                    <span className="text-xs text-sf-weak">{fmtDate(a.activityDate ?? a.createdAt)}</span>
+                    {/* Owner: who performed the activity */}
+                    {a.owner && (
+                      <span className="text-xs text-sf-weak">
+                        実施:{" "}
+                        <Link href={`/users/${a.owner.id}`} className="text-primary-600 hover:underline">
+                          {a.owner.name}
+                        </Link>
+                      </span>
+                    )}
+                    {/* Outcome */}
+                    {a.outcome && (
+                      <span className={`text-xs ${OUTCOME_CLS[a.outcome] ?? "text-sf-weak"}`}>
+                        {OUTCOME_LABEL[a.outcome] ?? a.outcome}
+                      </span>
+                    )}
+                    {/* Duration */}
+                    {a.durationMinutes && (
+                      <span className="text-xs text-sf-weak">{a.durationMinutes}分</span>
+                    )}
                   </div>
                   {a.subject && <p className="text-sm font-medium text-sf-text">{a.subject}</p>}
                   {a.body && (
                     <p className="text-xs text-sf-weak mt-0.5 line-clamp-2">{a.body}</p>
+                  )}
+                  {/* Related deal */}
+                  {a.deal && (
+                    <p className="text-xs text-sf-weak mt-0.5">
+                      関連商談:{" "}
+                      <Link href={`/deals/${a.deal.id}`} className="text-primary-600 hover:underline">
+                        {a.deal.dealName}
+                      </Link>
+                    </p>
+                  )}
+                  {/* Related contact */}
+                  {a.contact && (
+                    <p className="text-xs text-sf-weak mt-0.5">
+                      関連担当者:{" "}
+                      <Link href={`/contacts/${a.contact.id}`} className="text-primary-600 hover:underline">
+                        {a.contact.fullName}
+                      </Link>
+                    </p>
+                  )}
+                  {/* Next action */}
+                  {a.nextAction && (
+                    <p className="text-xs text-primary-600 mt-1">
+                      次回: {a.nextAction}
+                      {a.nextActionDueDate ? ` (${fmtDate(a.nextActionDueDate)})` : ""}
+                    </p>
                   )}
                 </div>
               </li>
@@ -842,10 +939,15 @@ function ActivityTab({ company }: { company: Company }) {
 
 function DealsTab({ company }: { company: Company }) {
   const deals = company.deals ?? [];
-  const openDeals = deals.filter((d) => !["Closed Won", "Closed Lost"].includes(d.stage));
+  const openDeals = deals.filter((d) => !["won", "lost", "Closed Won", "Closed Lost"].includes(d.stage));
   const totalPipeline = openDeals.reduce((s, d) => s + (d.amount ?? 0), 0);
-  const wonDeals = deals.filter((d) => d.stage === "Closed Won");
+  const wonDeals = deals.filter((d) => ["won", "Closed Won"].includes(d.stage));
   const totalWon = wonDeals.reduce((s, d) => s + (d.amount ?? 0), 0);
+  const now = new Date();
+
+  const RISK_CLS: Record<string, string> = {
+    LOW: "text-success", MEDIUM: "text-warning", HIGH: "text-danger", CRITICAL: "text-danger font-bold",
+  };
 
   return (
     <div className="p-6 space-y-4">
@@ -869,25 +971,52 @@ function DealsTab({ company }: { company: Company }) {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-sf-bg border-b border-sf-border">
-                  {["名前", "ステージ", "金額", "確度", "クローズ予定日"].map((h) => (
-                    <th key={h} className="px-4 py-2 text-xs font-semibold text-sf-weak uppercase tracking-wide">{h}</th>
+                  {["商談名", "ステージ", "担当者", "金額", "確度", "クローズ予定", "最終活動", "次回アクション"].map((h) => (
+                    <th key={h} className="px-4 py-2 text-xs font-semibold text-sf-weak uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-sf-border">
                 {deals.map((d) => {
                   const stageInfo = DEAL_STAGE_MAP[d.stage] ?? { label: d.stage, variant: "default" as const };
+                  const lastAct = d.lastActivityAt ? new Date(d.lastActivityAt) : null;
+                  const daysSince = lastAct ? Math.floor((now.getTime() - lastAct.getTime()) / 86400000) : null;
+                  const stale = daysSince == null || daysSince > 30;
                   return (
                     <tr key={d.id} className="hover:bg-sf-bg transition-colors">
                       <td className="px-4 py-2.5">
                         <Link href={`/deals/${d.id}`} className="text-primary-500 hover:underline font-medium text-sm">
-                          {d.name}
+                          {d.dealName ?? d.name}
                         </Link>
+                        {d.riskLevel && d.riskLevel !== "LOW" && (
+                          <span className={`ml-1 text-xs ${RISK_CLS[d.riskLevel] ?? "text-sf-weak"}`}>▲</span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5"><Badge variant={stageInfo.variant}>{stageInfo.label}</Badge></td>
+                      <td className="px-4 py-2.5 text-sm">
+                        {d.owner ? (
+                          <Link href={`/users/${d.owner.id}`} className="text-primary-600 hover:underline whitespace-nowrap">
+                            {d.owner.name}
+                          </Link>
+                        ) : (
+                          <span className="text-sf-weak text-xs">未設定</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 text-sm tabular-nums">{d.amount != null ? fmtCurrency(d.amount) : "—"}</td>
                       <td className="px-4 py-2.5 text-sm text-sf-weak">{d.probability != null ? `${d.probability}%` : "—"}</td>
-                      <td className="px-4 py-2.5 text-sm text-sf-weak">{fmtDate(d.closeDate)}</td>
+                      <td className="px-4 py-2.5 text-sm text-sf-weak whitespace-nowrap">{fmtDate(d.expectedCloseDate ?? d.closeDate)}</td>
+                      <td className="px-4 py-2.5 text-xs">
+                        {stale ? (
+                          <span className="text-danger whitespace-nowrap">
+                            {daysSince != null ? `${daysSince}日前` : "なし"}
+                          </span>
+                        ) : (
+                          <span className="text-sf-weak whitespace-nowrap">{daysSince != null ? `${daysSince}日前` : "—"}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-sf-weak max-w-[140px] truncate">
+                        {d.nextAction ?? <span className="text-warning">未設定</span>}
+                      </td>
                     </tr>
                   );
                 })}

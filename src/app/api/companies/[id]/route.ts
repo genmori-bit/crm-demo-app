@@ -16,18 +16,38 @@ export async function GET(_req: NextRequest, { params }: Params) {
       where: { id },
       include: {
         contacts: { orderBy: [{ isPrimary: "desc" }, { fullName: "asc" }] },
-        deals: { orderBy: { createdAt: "desc" } },
+        deals: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            owner: { select: { id: true, name: true, department: true } },
+            salesRep: { select: { id: true, name: true } },
+          },
+        },
         activities: {
           orderBy: { activityDate: "desc" },
-          include: { contact: { select: { fullName: true } } },
-          take: 10,
+          include: {
+            contact: { select: { id: true, fullName: true } },
+            owner: { select: { id: true, name: true } },
+            deal: { select: { id: true, dealName: true } },
+          },
+          take: 30,
         },
         tasks: {
           where: { status: { not: "done" } },
           orderBy: { dueDate: "asc" },
+          include: {
+            assignee: { select: { id: true, name: true } },
+          },
         },
         accountTeamMembers: {
-          include: { user: { select: { id: true, name: true, email: true, department: true } } },
+          include: {
+            user: {
+              select: {
+                id: true, name: true, email: true, department: true, title: true, phone: true,
+              },
+            },
+          },
+          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
         },
         accountInsights: {
           where: { isDismissed: false },

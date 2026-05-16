@@ -2,10 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { ALLOWED_COLUMNS } from "@/lib/report-columns";
 
 const ALLOWED_SORT_FIELDS: Record<string, string[]> = {
-  deal: ["dealName", "amount", "probability", "expectedCloseDate", "createdAt", "stage"],
-  company: ["companyName", "industry", "status", "createdAt", "annualRevenue"],
+  deal: ["dealName", "amount", "probability", "expectedCloseDate", "createdAt", "stage", "riskLevel", "activityCount", "lastActivityAt"],
+  company: ["companyName", "industry", "status", "createdAt", "annualRevenue", "tier", "healthScore"],
   contact: ["fullName", "email", "department", "title", "createdAt"],
-  activity: ["activityDate", "type", "subject", "createdAt"],
+  activity: ["activityDate", "type", "subject", "createdAt", "outcome", "durationMinutes"],
+  user: ["name", "email", "department", "role", "status", "createdAt"],
 };
 
 type ReportFilter = {
@@ -70,11 +71,20 @@ export async function runReport(report: {
   const validDir = sortDir === "asc" ? "asc" : "desc";
   const where = { ...buildWhereClause(objectType, filters), deletedAt: null };
 
+  // suppress unused warning
+  void validCols;
+  void groupBy;
+
   switch (objectType) {
     case "deal": {
       const rows = await prisma.deal.findMany({
         where,
-        include: { company: { select: { companyName: true } }, contact: { select: { fullName: true } } },
+        include: {
+          company: { select: { companyName: true } },
+          contact: { select: { fullName: true } },
+          owner: { select: { name: true } },
+          salesRep: { select: { name: true } },
+        },
         orderBy: { [validSort]: validDir },
         take: 1000,
       });
@@ -82,6 +92,8 @@ export async function runReport(report: {
         ...r,
         "company.companyName": r.company?.companyName,
         "contact.fullName": r.contact?.fullName,
+        "owner.name": r.owner?.name,
+        "salesRep.name": r.salesRep?.name,
       }));
     }
     case "company": {
@@ -107,6 +119,8 @@ export async function runReport(report: {
         include: {
           company: { select: { companyName: true } },
           deal: { select: { dealName: true } },
+          contact: { select: { fullName: true } },
+          owner: { select: { name: true } },
         },
         orderBy: { [validSort]: validDir },
         take: 1000,
@@ -115,6 +129,22 @@ export async function runReport(report: {
         ...r,
         "company.companyName": r.company?.companyName,
         "deal.dealName": r.deal?.dealName,
+        "contact.fullName": r.contact?.fullName,
+        "owner.name": r.owner?.name,
+      }));
+    }
+    case "user": {
+      const rows = await prisma.user.findMany({
+        where: { ...buildWhereClause(objectType, filters), deletedAt: null },
+        include: {
+          manager: { select: { name: true } },
+        },
+        orderBy: { [validSort]: validDir },
+        take: 1000,
+      });
+      return rows.map((r) => ({
+        ...r,
+        "manager.name": r.manager?.name,
       }));
     }
     default:

@@ -25,22 +25,43 @@ interface Deal {
   probability: number;
   expectedCloseDate: string | null;
   nextAction: string | null;
+  nextStep: string | null;
   memo: string | null;
+  lostReason: string | null;
+  ownerId: string | null;
+  riskLevel: string | null;
+  riskReason: string | null;
+  lastActivityAt: string | null;
+  activityCount: number;
+  meetingCount: number;
+  callCount: number;
+  emailCount: number;
   createdAt: string;
   company: { id: string; companyName: string };
   contact: { id: string; fullName: string } | null;
+  owner: { id: string; name: string | null; department: string | null } | null;
+  salesRep: { id: string; name: string | null } | null;
+  salesEngineer: { id: string; name: string | null } | null;
+  teamMembers: Array<{
+    id: string; role: string; isPrimary: boolean;
+    user: { id: string; name: string | null; title: string | null };
+  }>;
   activities: Array<{
     id: string;
     type: string;
     subject: string;
     body?: string | null;
+    outcome?: string | null;
+    durationMinutes?: number | null;
     activityDate: string;
+    owner?: { id: string; name: string | null } | null;
     company: { id: string; companyName: string } | null;
     contact: { id: string; fullName: string } | null;
     deal: { id: string; dealName: string } | null;
   }>;
   tasks: Array<{
     id: string; title: string; dueDate: string | null; status: string; priority: string;
+    assignee?: { id: string; name: string | null } | null;
   }>;
 }
 
@@ -152,9 +173,48 @@ export default function DealDetailPage() {
               </Link>
             </dd>
           </div>
+          {/* Owner - linked to /users/[id] */}
+          {deal.owner && (
+            <div>
+              <dt className="text-2xs font-medium text-sf-weak uppercase tracking-wide mb-0.5">商談担当者</dt>
+              <dd className="text-sm font-semibold">
+                <Link href={`/users/${deal.owner.id}`} className="text-primary-500 hover:underline">
+                  {deal.owner.name}
+                </Link>
+                {deal.owner.department && (
+                  <span className="text-xs text-sf-weak ml-1">({deal.owner.department})</span>
+                )}
+              </dd>
+            </div>
+          )}
+          {deal.salesEngineer && (
+            <div>
+              <dt className="text-2xs font-medium text-sf-weak uppercase tracking-wide mb-0.5">SE</dt>
+              <dd className="text-sm font-semibold">
+                <Link href={`/users/${deal.salesEngineer.id}`} className="text-primary-500 hover:underline">
+                  {deal.salesEngineer.name}
+                </Link>
+              </dd>
+            </div>
+          )}
+          {/* Risk level */}
+          {deal.riskLevel && deal.riskLevel !== "LOW" && (
+            <div>
+              <dt className="text-2xs font-medium text-sf-weak uppercase tracking-wide mb-0.5">リスク</dt>
+              <dd className={cn(
+                "text-sm font-semibold",
+                deal.riskLevel === "CRITICAL" ? "text-danger" :
+                deal.riskLevel === "HIGH" ? "text-danger" :
+                "text-warning"
+              )}>
+                ▲ {deal.riskLevel === "CRITICAL" ? "緊急" : deal.riskLevel === "HIGH" ? "高" : "中"}
+                {deal.riskReason && <span className="font-normal text-xs ml-1">({deal.riskReason})</span>}
+              </dd>
+            </div>
+          )}
           {deal.contact && (
             <div>
-              <dt className="text-2xs font-medium text-sf-weak uppercase tracking-wide mb-0.5">担当者</dt>
+              <dt className="text-2xs font-medium text-sf-weak uppercase tracking-wide mb-0.5">主要担当者</dt>
               <dd className="text-sm font-semibold">
                 <Link href={`/contacts/${deal.contact.id}`} className="text-primary-500 hover:underline">
                   {deal.contact.fullName}
@@ -336,6 +396,59 @@ export default function DealDetailPage() {
                 </div>
               )}
             </LightningCard>
+
+            {/* Opportunity Team */}
+            {deal.teamMembers && deal.teamMembers.length > 0 && (
+              <LightningCard>
+                <LightningCardHeader
+                  title={`商談チーム (${deal.teamMembers.length})`}
+                  icon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  }
+                />
+                <LightningCardBody noPadding>
+                  <ul className="divide-y divide-sf-border">
+                    {deal.teamMembers.map((m) => {
+                      const roleLabel: Record<string, string> = {
+                        SALES_REP: "営業担当",
+                        SALES_ENGINEER: "SE",
+                        MANAGER: "マネージャー",
+                        EXECUTIVE: "エグゼクティブ",
+                        SUPPORT: "サポート",
+                      };
+                      return (
+                        <li key={m.id} className="px-4 py-2.5 flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                            <span className="text-2xs font-bold text-primary-700">
+                              {m.user.name?.charAt(0) ?? "?"}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <Link
+                              href={`/users/${m.user.id}`}
+                              className="text-xs font-semibold text-primary-600 hover:underline block truncate"
+                            >
+                              {m.user.name}
+                            </Link>
+                            <p className="text-2xs text-sf-weak">
+                              {roleLabel[m.role] ?? m.role}
+                              {m.user.title && ` · ${m.user.title}`}
+                            </p>
+                          </div>
+                          {m.isPrimary && (
+                            <span className="text-2xs font-semibold text-primary-600 bg-primary-50 border border-primary-200 rounded px-1.5 py-0.5 shrink-0">
+                              主担当
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </LightningCardBody>
+              </LightningCard>
+            )}
 
             {/* File Attachments */}
             <FileAttachmentsCard apiBase={`/api/deals/${id}/files`} />
