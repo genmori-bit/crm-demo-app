@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/ui/loading";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { KpiCard } from "@/components/ui/kpi-card";
 import { FileAttachmentsCard } from "@/components/ui/file-attachments-card";
+import { MetricCard, MetricStrip } from "@/components/ui/metric-card";
 import { ObjectIcon } from "@/components/ui/object-icon";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -850,9 +850,9 @@ function DealsTab({ company }: { company: Company }) {
   return (
     <div className="p-6 space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <KpiCard label="パイプライン" value={fmtCurrency(totalPipeline)} accent="primary" />
-        <KpiCard label="受注金額" value={fmtCurrency(totalWon)} accent="success" />
-        <KpiCard label="商談数" value={`${deals.length}件`} accent="default" />
+        <MetricCard label="パイプライン" value={fmtCurrency(totalPipeline)} tone="brand" emphasis="medium" />
+        <MetricCard label="受注金額" value={fmtCurrency(totalWon)} tone="success" emphasis="medium" />
+        <MetricCard label="商談数" value={`${deals.length}件`} tone="neutral" emphasis="low" />
       </div>
       <LightningCard>
         <LightningCardHeader
@@ -1257,8 +1257,11 @@ export default function CompanyDetailPage() {
   const statusInfo = company.status ? STATUS_MAP[company.status] : null;
   const avatarColor = company.tier ? (TIER_AVATAR_COLOR[company.tier] ?? "bg-blue-500") : "bg-blue-500";
 
+  const score = company.healthScore ?? 0;
   const healthAccent =
-    (company.healthScore ?? 0) >= 80 ? "success" : (company.healthScore ?? 0) >= 60 ? "warning" : "danger";
+    score >= 80 ? "success" : score >= 60 ? "warning" : "danger";
+  const healthLabel =
+    score >= 80 ? "良好" : score >= 60 ? "注意" : "要対応";
 
   return (
     <div className="min-h-screen bg-sf-bg">
@@ -1317,49 +1320,53 @@ export default function CompanyDetailPage() {
           </div>
         </div>
 
-        {/* KPI highlight strip */}
-        <div className="px-6 pb-4 border-t border-sf-border/60 pt-3">
-          <div className="grid grid-cols-4 lg:grid-cols-7 gap-3">
-            <KpiCard
-              label="商談パイプライン"
-              value={fmtCompact(rollup.openPipelineAmount)}
-              sub={fmtCurrency(rollup.openPipelineAmount)}
-              accent="primary"
-            />
-            <KpiCard
-              label="進行中商談"
-              value={`${rollup.openDealsCount}件`}
-              accent="primary"
-              href="/deals"
-            />
-            <KpiCard
-              label="受注金額"
-              value={fmtCompact(rollup.wonAmount)}
-              sub={fmtCurrency(rollup.wonAmount)}
-              accent="success"
-            />
-            <KpiCard
-              label="ARR"
-              value={fmtCompact(company.arr ?? 0)}
-              sub={company.arr ? fmtCurrency(company.arr) : undefined}
-              accent="success"
-            />
-            <KpiCard
-              label="アクティブ契約"
-              value={`${rollup.activeContractsCount}件`}
-              accent="default"
-            />
-            <KpiCard
-              label="未解決ケース"
-              value={`${rollup.activeCasesCount}件`}
-              accent={rollup.activeCasesCount > 0 ? "warning" : "default"}
-            />
-            <KpiCard
-              label="ヘルススコア"
-              value={company.healthScore ?? "—"}
-              accent={healthAccent}
-            />
-          </div>
+        {/* Highlight Metrics strip */}
+        <div className="px-6 pb-4 pt-3 border-t border-sf-border/60">
+          <MetricStrip
+            items={[
+              {
+                label: "パイプライン",
+                value: fmtCompact(rollup.openPipelineAmount),
+                sub: `進行中 ${rollup.openDealsCount}件`,
+                emphasis: "high",
+                href: "/deals",
+              },
+              {
+                label: "ARR",
+                value: fmtCompact(company.arr ?? 0),
+                sub: company.arr ? fmtCurrency(company.arr) : "—",
+                emphasis: "high",
+              },
+              {
+                label: "受注金額",
+                value: fmtCompact(rollup.wonAmount),
+                sub: fmtCurrency(rollup.wonAmount),
+                emphasis: "medium",
+              },
+              {
+                label: "未解決ケース",
+                value: `${rollup.activeCasesCount}件`,
+                sub: rollup.activeCasesCount > 0 ? "対応が必要です" : "問題なし",
+                tone: rollup.activeCasesCount > 0 ? "danger" : "neutral",
+                emphasis: "medium",
+              },
+              {
+                label: "ヘルススコア",
+                value: company.healthScore ?? "—",
+                sub: company.healthScore != null ? healthLabel : undefined,
+                tone: healthAccent === "danger" ? "danger"
+                    : healthAccent === "warning" ? "warning"
+                    : healthAccent === "success" ? "success"
+                    : "neutral",
+                emphasis: "medium",
+              },
+              {
+                label: "アクティブ契約",
+                value: `${rollup.activeContractsCount}件`,
+                emphasis: "low",
+              },
+            ]}
+          />
         </div>
       </div>
 

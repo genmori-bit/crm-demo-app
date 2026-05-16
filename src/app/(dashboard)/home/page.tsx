@@ -4,13 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api-client";
 import Link from "next/link";
-import { KpiCard } from "@/components/ui/kpi-card";
 import { LightningCard, LightningCardHeader, LightningCardBody } from "@/components/ui/lightning-card";
 import { HorizontalBarChart, DonutChart } from "@/components/ui/simple-chart";
 import { ActivityTimeline } from "@/components/ui/activity-timeline";
 import { DealStageBadge, TaskPriorityBadge } from "@/components/ui/status-badges";
 import { PageLoading } from "@/components/ui/loading";
-import { formatAmount, formatAmountCompact, formatDate, isOverdue } from "@/lib/utils";
+import { MetricCard, MetricGrid } from "@/components/ui/metric-card";
+import { formatAmount, formatCurrencyShort, formatDate, isOverdue } from "@/lib/utils";
 import { DEAL_STAGE_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -228,78 +228,74 @@ export default function DashboardPage() {
       </div>
 
       <div className="p-6 flex-1 space-y-5">
-        {/* ── KPI row ──────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-          <KpiCard
-            label="進行中商談"
-            value={`${data.activeDealsCount}件`}
-            sub={formatAmount(data.activeDealsAmount)}
-            accent="primary"
-            href="/deals?view=active"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            }
-          />
-          <KpiCard
-            label="受注見込み"
-            value={formatAmountCompact(data.expectedRevenue)}
-            sub={`¥${data.expectedRevenue.toLocaleString()} (確度加重)`}
-            accent="success"
-            href="/deals"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-          />
-          <KpiCard
-            label="未完了タスク"
-            value={`${data.pendingTasksCount}件`}
-            sub={data.overdueTasksCount > 0 ? `期限超過 ${data.overdueTasksCount}件` : "期限切れなし"}
-            accent={data.overdueTasksCount > 0 ? "danger" : "default"}
-            href="/tasks"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            }
-          />
-          <KpiCard
-            label="今月クローズ"
-            value={`${data.closingThisMonth.length}件`}
-            sub={formatAmount(data.closingThisMonth.reduce((s, d) => s + d.amount, 0))}
-            accent="warning"
-            href="/deals"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            }
-          />
-          <KpiCard
-            label="顧客企業数"
-            value={`${data.companyCount}社`}
-            accent="default"
-            href="/companies"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            }
-          />
-          <KpiCard
-            label="担当者数"
-            value={`${data.contactCount}人`}
-            accent="default"
-            href="/contacts"
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            }
-          />
+        {/* ── KPI section ──────────────────────────────── */}
+        <div className="space-y-2.5">
+          {/* Primary metrics */}
+          <MetricGrid cols={4}>
+            <MetricCard
+              label="進行中商談"
+              value={`${data.activeDealsCount}件`}
+              subValue={formatCurrencyShort(data.activeDealsAmount)}
+              tone="brand"
+              emphasis="high"
+              href="/deals?view=active"
+              aria-label={`進行中商談: ${data.activeDealsCount}件`}
+            />
+            <MetricCard
+              label="受注見込み"
+              value={formatCurrencyShort(data.expectedRevenue)}
+              subValue={`${formatAmount(data.expectedRevenue)} (確度加重)`}
+              tone="success"
+              emphasis="high"
+              href="/deals"
+              aria-label={`受注見込み: ${formatCurrencyShort(data.expectedRevenue)}`}
+            />
+            <MetricCard
+              label="未完了タスク"
+              value={`${data.pendingTasksCount}件`}
+              subValue={
+                data.overdueTasksCount > 0
+                  ? `期限超過 ${data.overdueTasksCount}件`
+                  : "期限切れなし"
+              }
+              status={data.overdueTasksCount > 0 ? { label: "期限超過あり", tone: "danger" } : undefined}
+              tone={data.overdueTasksCount > 0 ? "danger" : "neutral"}
+              emphasis="medium"
+              href="/tasks"
+              aria-label={`未完了タスク: ${data.pendingTasksCount}件${data.overdueTasksCount > 0 ? `、期限超過${data.overdueTasksCount}件` : ""}`}
+            />
+            <MetricCard
+              label="今月クローズ予定"
+              value={`${data.closingThisMonth.length}件`}
+              subValue={formatCurrencyShort(data.closingThisMonth.reduce((s, d) => s + d.amount, 0))}
+              tone="warning"
+              emphasis="medium"
+              href="/deals"
+              aria-label={`今月クローズ予定: ${data.closingThisMonth.length}件`}
+            />
+          </MetricGrid>
+
+          {/* Secondary metrics (compact) */}
+          <div className="flex gap-3">
+            <MetricCard
+              label="顧客企業数"
+              value={`${data.companyCount}社`}
+              tone="neutral"
+              emphasis="low"
+              href="/companies"
+              className="flex-1"
+              aria-label={`顧客企業数: ${data.companyCount}社`}
+            />
+            <MetricCard
+              label="担当者数"
+              value={`${data.contactCount}人`}
+              tone="neutral"
+              emphasis="low"
+              href="/contacts"
+              className="flex-1"
+              aria-label={`担当者数: ${data.contactCount}人`}
+            />
+          </div>
         </div>
 
         {/* ── 2-column main area ───────────────────────── */}

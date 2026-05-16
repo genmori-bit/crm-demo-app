@@ -1,3 +1,10 @@
+/**
+ * KpiCard — 後方互換性を維持しつつ新デザインへ移行
+ *
+ * 新規実装は MetricCard / MetricStrip (metric-card.tsx) を使用してください。
+ * このコンポーネントは既存コードとの後方互換のために維持します。
+ */
+
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -12,12 +19,13 @@ interface KpiCardProps {
   className?: string;
 }
 
-const accentConfig = {
-  default: { bar: "border-l-sf-border", icon: "bg-sf-bg text-sf-weak border-sf-border" },
-  primary: { bar: "border-l-primary-500", icon: "bg-info-light text-primary-500 border-info-border" },
-  success: { bar: "border-l-success", icon: "bg-success-light text-success border-success-border" },
-  warning: { bar: "border-l-warning", icon: "bg-warning-light text-warning border-warning-border" },
-  danger:  { bar: "border-l-danger",  icon: "bg-danger-light text-danger border-danger-border" },
+// subtle top-border accent (2px) — 太い左ラインの廃止
+const accentTop: Record<string, string> = {
+  default: "",
+  primary: "border-t-2 border-t-primary-400",
+  success: "border-t-2 border-t-success",
+  warning: "border-t-2 border-t-warning",
+  danger:  "border-t-2 border-t-danger",
 };
 
 export function KpiCard({
@@ -30,65 +38,68 @@ export function KpiCard({
   href,
   className,
 }: KpiCardProps) {
-  const { bar, icon: iconClass } = accentConfig[accent];
+  const topAccent = accentTop[accent] ?? "";
+
+  const valueStr = String(value);
+  const valueClass = cn(
+    "font-bold text-sf-text tabular-nums leading-none",
+    valueStr.length <= 7  ? "text-[1.375rem]" :
+    valueStr.length <= 10 ? "text-lg" :
+    "text-base"
+  );
 
   const cardClass = cn(
-    "bg-sf-surface rounded-sf border border-sf-border shadow-card px-5 py-4 border-l-4 transition-shadow duration-150 hover:shadow-card-hover",
-    href && "cursor-pointer hover:border-primary-400",
-    bar,
+    "bg-sf-surface rounded-lg border border-sf-border",
+    "shadow-[0_1px_2px_0_rgba(0,0,0,0.04)] px-4 py-3.5",
+    topAccent,
+    href && "cursor-pointer hover:border-primary-300 hover:shadow-sm transition-all",
     className
   );
 
+  const iconEl = icon ? (
+    <span className="text-sf-weak/50 shrink-0 ml-2" aria-hidden="true">
+      {/* render lucide icon or svg at small size */}
+      <span className="[&>svg]:w-4 [&>svg]:h-4 [&>*]:w-4 [&>*]:h-4">{icon}</span>
+    </span>
+  ) : null;
+
   const content = (
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-sf-weak uppercase tracking-wider mb-1.5 truncate">
-          {label}
-        </p>
-        <p className={cn(
-          "font-bold text-sf-text leading-none tabular-nums truncate",
-          String(value).length <= 7  ? "text-[1.625rem]" :
-          String(value).length <= 10 ? "text-xl" :
-          "text-base"
-        )}>{value}</p>
-        {sub && (
-          <p className="text-xs text-sf-weak mt-1.5 leading-snug">{sub}</p>
-        )}
-        {trend && (
-          <div className="flex items-center gap-1 mt-2">
-            <svg
-              className={cn("w-3 h-3 shrink-0", trend.positive ? "text-success" : "text-danger")}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-              aria-hidden="true"
-            >
-              {trend.positive ? (
-                <path fillRule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              ) : (
-                <path fillRule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              )}
-            </svg>
-            <span className={cn("text-xs font-semibold", trend.positive ? "text-success" : "text-danger")}>
+    <div className="flex flex-col gap-2">
+      {/* Label row */}
+      <div className="flex items-center justify-between gap-1">
+        <p className="text-xs font-medium text-sf-text/60 leading-none truncate">{label}</p>
+        {iconEl}
+      </div>
+
+      {/* Value */}
+      <p className={valueClass}>{value}</p>
+
+      {/* Sub / trend */}
+      {(sub || trend) && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {trend && (
+            <span className={cn(
+              "inline-flex items-center gap-0.5 text-xs font-semibold",
+              trend.positive ? "text-success" : "text-danger"
+            )}>
+              <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                {trend.positive ? (
+                  <path fillRule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                ) : (
+                  <path fillRule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                )}
+              </svg>
               {trend.value}
             </span>
-          </div>
-        )}
-      </div>
-      {icon && (
-        <div className={cn("w-10 h-10 rounded-sf border flex items-center justify-center shrink-0", iconClass)}>
-          {icon}
+          )}
+          {sub && <span className="text-xs text-sf-weak leading-snug">{sub}</span>}
         </div>
       )}
     </div>
   );
 
   if (href) {
-    return (
-      <Link href={href} className={cardClass}>
-        {content}
-      </Link>
-    );
+    return <Link href={href} className={cardClass}>{content}</Link>;
   }
-
   return <div className={cardClass}>{content}</div>;
 }
